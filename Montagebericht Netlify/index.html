@@ -181,10 +181,6 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 
 <section>
   <h2>Arbeitszeit</h2>
-  <div class="grid">
-    <label>Anfahrt (Uhrzeit)<input id="anf" type="time"></label>
-    <label>Abfahrt (Uhrzeit)<input id="abf" type="time"></label>
-  </div>
   <div id="zeit"></div>
   <button class="add" type="button" id="addz">+ Monteur / Tag hinzufügen</button>
   <div class="sum" id="zsum"></div>
@@ -457,10 +453,10 @@ function render(){
    <div class="top">
     <div><p class="abs">Peter Grapp GmbH · Akazienstraße 2 · 12207 Berlin-Lichterfelde</p><div class="addr">${rech}</div></div>
     <div class="rbox"><h4>Rechnungs-Adresse${v("rn")?"":" = Objekt"}</h4>
-     <dl class="kv"><dt>Dok.-Nr.</dt><dd>${v("doc")}</dd><dt>Kd.-Nr.</dt><dd>${v("kdnr")||"–"}</dd><dt>Projekt / W-Nr.</dt><dd>${v("w")||"–"}</dd><dt>Best.-/Auftr.-Nr.</dt><dd>${v("bst")||"–"}</dd><dt>Anfahrt</dt><dd>${v("anf")}</dd><dt>Abfahrt</dt><dd>${v("abf")}</dd></dl></div>
+     <dl class="kv"><dt>Dok.-Nr.</dt><dd>${v("doc")}</dd><dt>Kd.-Nr.</dt><dd>${v("kdnr")||"–"}</dd><dt>Projekt / W-Nr.</dt><dd>${v("w")||"–"}</dd><dt>Best.-/Auftr.-Nr.</dt><dd>${v("bst")||"–"}</dd></dl></div>
    </div>
    <h3 class="t">Montagebericht</h3>
-   <dl class="kv" style="grid-template-columns:120px 1fr 120px 1fr"><dt>Objekt</dt><dd>${v("obj")}, ${v("astr")}, ${v("aplz")}</dd><dt>Telef.-Nummer</dt><dd>${v("tel")}</dd><dt>Erf.-Datum</dt><dd>${dt($("dat").value)}</dd><dt>Arbeiten lt. KOA</dt><dd>${v("koa")||"–"}</dd></dl>
+   <dl class="kv" style="grid-template-columns:120px 1fr 120px 1fr"><dt>Telef.-Nummer</dt><dd>${v("tel")||"–"}</dd><dt>Arbeiten lt. KOA</dt><dd>${v("koa")||"–"}</dd></dl>
    <p class="lbl">Ausgeführte Arbeiten</p><div class="lines">${v("arb")}</div>${ver=="intern"&&$("koaw").checked?'<div class="koa">KOA ERWÜNSCHT – bitte Kostenvoranschlag erstellen</div>':""}
    <table style="margin-top:12px"><thead><tr><th>Monteur</th><th>Datum</th><th class="num">Beginn</th><th class="num">Ende</th><th class="num">Std.</th><th class="num">Anz. Anfahrten</th><th class="num">Anfahrt (km)</th>${ver=="intern"?'<th class="num">Fahrtkosten €</th>':""}</tr></thead>
     <tbody>${zr}</tbody><tfoot><tr><td colspan="4">Summe</td><td class="num">${fh(Z.reduce((s,r)=>s+hrs(r),0))}</td><td class="num">${Z.reduce((s,r)=>s+(+anz(r)||0),0)||""}</td><td></td>${ver=="intern"?`<td class="num">${eur(Z.reduce((s,r)=>s+fahrt(r),0))}</td>`:""}</tr></tfoot></table>${ver=="intern"?'<p style="font-size:10px;color:#555;margin:3px 0 0">Fahrtkosten: unter 60 km 45,00 € je Fahrt, über 60 km 45,00 € + 1,80 € je Mehr-km über 60</p>':""}
@@ -492,7 +488,7 @@ $("t-form").onclick=()=>show(false);$("t-pdf").onclick=()=>show(true);$("go").on
 $("back").onclick=()=>show(false);
 
 /* ---------- Speichern auf dem Gerät ---------- */
-const KEY="mbericht1",FIELDS=["doc","w","koa","bst","dat","obj","astr","aplz","tel","kdnr","rn","rs","rp","arb","anf","abf","schtx","kname","kmail","dcm","dck"];
+const KEY="mbericht1",FIELDS=["doc","w","koa","bst","dat","obj","astr","aplz","tel","kdnr","rn","rs","rp","arb","schtx","kname","kmail","dcm","dck"];
 let IDBP=null;
 const idb=()=>IDBP||(IDBP=new Promise((ok,no)=>{try{const r=indexedDB.open("mbericht-fotos",1);r.onupgradeneeded=()=>r.result.createObjectStore("ph");r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(e){no(e)}}));
 const idbRun=(m,f)=>idb().then(d=>new Promise((ok,no)=>{const t=d.transaction("ph",m),q=f(t.objectStore("ph"));t.oncomplete=()=>ok(q&&q.result);t.onerror=()=>no(t.error)}));
