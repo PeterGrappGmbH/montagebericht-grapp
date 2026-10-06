@@ -426,7 +426,7 @@ function pad(c){const x=c.getContext("2d");x.lineWidth=3;x.lineCap="round";x.lin
   const pt=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]};
   c.addEventListener("pointerdown",e=>{dn=true;c.setPointerCapture(e.pointerId);const[a,b]=pt(e);x.beginPath();x.moveTo(a,b)});
   c.addEventListener("pointermove",e=>{if(!dn)return;const[a,b]=pt(e);x.lineTo(a,b);x.stroke();used[c.id]=1});
-  c.addEventListener("pointerup",()=>{if(dn){dn=false;save()}});c.addEventListener("pointercancel",()=>dn=false)}
+  c.addEventListener("pointerup",()=>{if(dn){dn=false;/* Datum der Unterschrift beim Unterschreiben automatisch setzen */const d=$(c.id=="ck"?"dck":"dcm");if(d&&!d.value)d.value=today();save()}});c.addEventListener("pointercancel",()=>dn=false)}
 function clr(c){c.getContext("2d").clearRect(0,0,c.width,c.height);used[c.id]=0;save()}
 ["cm","ck"].forEach(id=>pad($(id)));
 
