@@ -162,13 +162,13 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   <label class="r"><span>Datum <b class="req">*</b></span><input id="dat" type="date"></label>
   <label class="r"><span>Objekt / Kunde<small class="fhint">inkl. WE / WHG / App.-Nr.</small></span><input id="obj" placeholder="z. B. Max Mustermann, WHG 12"></label>
   <label class="r"><span>Straße / Hausnummer</span><input id="astr"></label>
-  <label class="r"><span>PLZ / Ort</span><input id="aplz" placeholder="z. B. 12207" autocomplete="off"></label>
+  <label class="r"><span>PLZ / Ort</span><input id="aplz" placeholder="z. B. 12207" inputmode="numeric" autocomplete="off"></label>
   <label class="r"><span>Telefon vor Ort</span><input id="tel" type="tel"></label>
   <label class="r"><span>Kunden-Nr.</span><input id="kdnr" inputmode="numeric" placeholder="falls bekannt"></label>
   <details class="opt"><summary>+ Abweichende Rechnungsadresse</summary>
     <label class="r"><span>Name / Firma</span><input id="rn" placeholder="z. B. Hausverwaltung …"></label>
     <label class="r"><span>Straße / Hausnummer</span><input id="rs"></label>
-    <label class="r"><span>PLZ / Ort</span><input id="rp"></label>
+    <label class="r"><span>PLZ / Ort</span><input id="rp" inputmode="numeric" autocomplete="off" placeholder="z. B. 12207"></label>
   </details>
 </section>
 
@@ -350,12 +350,19 @@ function drawM(){
   <label>Einheit<select data-m="${i}" data-f="e">${["Stk","m","VE","Pkt","Std","psch"].map(x=>`<option${x==r.e?" selected":""}>${x}</option>`).join("")}</select></label>
   <label>Artikel-Nr.<input data-m="${i}" data-f="a" value="${esc(r.a)}"></label></div></div>`).join("");
 }
+/* PLZ → Ort (wie Wartungsprotokolle): Berlin offline, sonst openplzapi.org / zippopotam.us, Ergebnisse werden gemerkt */
+const PLZC=(()=>{try{return JSON.parse(localStorage.getItem("mb-plz")||"{}")}catch(e){return{}}})();
+async function plzOrt(z){const n=+z;if(n>=10115&&n<=14199&&z!="12529")return"Berlin";if(PLZC[z])return PLZC[z];
+  const to=u=>{const c=new AbortController(),tm=setTimeout(()=>c.abort(),4500);return fetch(u,{signal:c.signal}).then(r=>r.ok?r.json():null).finally(()=>clearTimeout(tm))};
+  let o="";try{const j=await to("https://openplzapi.org/de/Localities?postalCode="+z);if(j&&j[0]&&j[0].name)o=j[0].name}catch(e){}
+  if(!o)try{const j=await to("https://api.zippopotam.us/de/"+z);if(j&&j.places&&j.places[0])o=j.places[0]["place name"]||""}catch(e){}
+  if(o){PLZC[z]=o;try{localStorage.setItem("mb-plz",JSON.stringify(PLZC))}catch(e){}}return o}
 document.addEventListener("input",e=>{const t=e.target;
   if(t.dataset.z!=null){Z[t.dataset.z][t.dataset.f]=t.value;const rowH=t.closest(".row").querySelector(".hd:last-child span");if(rowH)rowH.textContent=fh(hrs(Z[t.dataset.z]))+" h";$("zsum").textContent="Gesamt: "+fh(Z.reduce((s,r)=>s+hrs(r),0))+" Std.";}
   if(t.dataset.m!=null){M[t.dataset.m][t.dataset.f]=t.value;if(t.dataset.f=="b")sugg(+t.dataset.m,t.value);if(t.dataset.f=="a"){const i=+t.dataset.m,v=t.value.trim(),n=/^\d{5,6}$/.test(v)?v.padStart(7,"0"):v,x=ART.find(a=>a[0]==n);M[i].pe=x?x[5]:1;
     /* Artikel-Nr. erkannt: Bezeichnung und Einheit automatisch eintragen */
     if(x){Object.assign(M[i],{a:x[0],b:x[1],e:x[3]});const q=s=>document.querySelector(`[data-m="${i}"][data-f="${s}"]`);q("b").value=x[1];q("e").value=x[3];if(n!=v)t.value=n;$("sg"+i).innerHTML=""}}}
-  if(t.id=="aplz"){const z=t.value.trim().slice(0,5);if(/^\d{5}$/.test(z)&&+z>=10115&&+z<=14199&&t.value.trim().length==5)t.value=z+" Berlin";}
+  if((t.id=="aplz"||t.id=="rp")&&/^\d{5}$/.test(t.value.trim())){const z=t.value.trim();plzOrt(z).then(o=>{if(o&&t.value.trim()==z){t.value=z+" "+o;save()}})}
 });
 document.addEventListener("change",e=>{const t=e.target;if(t.dataset.z!=null){Z[t.dataset.z][t.dataset.f]=t.value;if(t.dataset.f=="an"){drawZ();if(t.value=="Sonstige")$("ans"+t.dataset.z).focus()}}if(t.dataset.m!=null)M[t.dataset.m][t.dataset.f]=t.value});
 document.addEventListener("click",e=>{const t=e.target;
