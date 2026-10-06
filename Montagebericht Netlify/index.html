@@ -88,6 +88,11 @@ canvas{width:100%;max-width:100%;height:auto;aspect-ratio:10/3;background:#fff;b
 button:disabled{opacity:.55;cursor:wait}
 #pdfwork{position:fixed;left:-10000px;top:0;width:794px;pointer-events:none}
 #pdfwork .paper{transform:none!important;box-shadow:none}
+/* iPad/Safari: Datums- und Zeitfelder sauber in voller Höhe, ohne Überlappung */
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;height:46px;line-height:24px;text-align:left}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;min-height:24px}
+.sig>div{gap:10px}.sig>div>input{display:block;flex:none}
+.sd{display:flex;flex-direction:column;gap:6px;margin-top:2px;flex:none}
 .miss{outline:2px solid var(--bad);outline-offset:2px;border-radius:8px;background:color-mix(in srgb,var(--bad) 8%,transparent)}
 .msg{min-height:1em;margin:8px 0 0;font-size:15px;font-weight:600;color:var(--bad)}.msg.ok{color:var(--ok)}
 .paper .stamp{border:2px solid #17703f;color:#17703f;border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;margin:10px 0 0;display:inline-block}
@@ -224,7 +229,7 @@ button:disabled{opacity:.55;cursor:wait}
   <p class="msg" id="msg" role="status"></p>
   <div class="act"><button type="button" class="alt" id="go">PDF-Vorschau</button><button type="button" class="alt" id="send">An Kunden senden</button></div>
   <div class="act"><button type="button" id="office">Ans Büro senden</button></div>
-  <p class="note"><b>An Kunden senden:</b> erstellt die Kundenfassung und öffnet das Teilen-Menü. Dort „Mail“ wählen, die E-Mail-Adresse ist schon kopiert und kann eingefügt werden.<br><b>Ans Büro senden:</b> schickt interne Fassung und Kundenfassung direkt per E-Mail ans Büro. Auf dem iPad wird dabei nichts gespeichert. Erst den Kunden, dann das Büro – dann steht der Versand an den Kunden mit im Bericht.</p>
+  <p class="note"><b>An Kunden senden:</b> schickt die Kundenfassung direkt per E-Mail an die Adresse oben (Absender wartung@, das Büro bekommt eine Kopie).<br><b>Ans Büro senden:</b> schickt interne Fassung und Kundenfassung direkt per E-Mail ans Büro. Auf dem iPad wird dabei nichts gespeichert. Erst den Kunden, dann das Büro – dann steht der Versand an den Kunden mit im Bericht.</p>
 </section>
 </div>
 
@@ -509,15 +514,23 @@ async function busy(btn,label,fn){const m=$("msg"),old=btn.textContent;btn.disab
 $("send").onclick=()=>{if(!check())return;const to=$("kmail").value.trim(),m=$("msg");
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){$("kmail").classList.add("miss");m.classList.remove("ok");m.textContent="Bitte eine gültige E-Mail-Adresse des Kunden eintragen.";$("kmail").focus();return}
   $("kmail").classList.remove("miss");
-  busy($("send"),"Kundenfassung wird erstellt …",async m=>{try{await navigator.clipboard.writeText(to)}catch(e){}
-    const f=await makePdf("kunde");const r=await deliver([f],infoText()+"\nAn: "+to);
-    if(r=="ok"){const n=new Date();sent={to,when:n.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit"})+", "+n.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})+" Uhr"};save();
-      m.classList.add("ok");m.textContent="Kundenfassung an "+to+" übergeben. Der Vermerk steht jetzt in der internen Fassung."}
-    else m.textContent=r=="abgebrochen"?"Senden abgebrochen. Es wurde kein Vermerk gesetzt.":"Die Kundenfassung konnte nicht geteilt werden."})};
+  if(!navigator.onLine){m.classList.remove("ok");m.textContent="Kein Internet. Der Bericht bleibt gespeichert, bitte später erneut senden.";return}
+  busy($("send"),"Wird an den Kunden gesendet …",async m=>{const f=await makePdf("kunde");
+    const mark=()=>{const n=new Date();sent={to,when:n.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit"})+", "+n.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})+" Uhr"};save()};
+    try{await post("Ihr Montagebericht "+$("doc").value+" – Peter Grapp GmbH","",[{name:f.name,data:await b64(f.blob)}],{mode:"kunde",to,obj:$("obj").value,doc:$("doc").value});
+      mark();m.classList.add("ok");m.textContent="Kundenfassung per E-Mail an "+to+" gesendet. Das Büro bekommt eine Kopie, der Vermerk steht in der internen Fassung."}
+    catch(e){if(e&&e.code=="offline_preview"){try{await navigator.clipboard.writeText(to)}catch(x){}const r=await deliver([f],infoText()+"\nAn: "+to);
+        if(r=="ok"){mark();m.classList.add("ok");m.textContent="Kundenfassung an "+to+" übergeben (Adresse kopiert)."}else m.textContent=r=="abgebrochen"?"Senden abgebrochen.":"Die Kundenfassung konnte nicht geteilt werden.";return}
+      m.classList.remove("ok");m.textContent="Senden an den Kunden hat nicht geklappt ("+errText(e)+"). Der Bericht bleibt gespeichert."}})};
 /* Interne Fassung direkt ans Büro (Netlify-Funktion verschickt per IONOS) – nichts landet auf dem iPad */
 const b64=blob=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(",")[1]);r.onerror=no;r.readAsDataURL(blob)});
-async function post(subject,text,files){const res=await fetch("/.netlify/functions/send-intern",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subject,text,files})});
-  let j={};try{j=await res.json()}catch(e){}if(!res.ok||!j.ok)throw Object.assign(new Error("send"),{code:j.error||res.status})}
+async function post(subject,text,files,extra={}){let res;
+  try{res=await fetch("/.netlify/functions/send-intern",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subject,text,files,...extra})})}
+  catch(e){throw Object.assign(new Error("send"),{code:/netlify\.app$|elektro-grapp/.test(location.hostname)?"netz":"offline_preview"})}
+  let j={};try{j=await res.json()}catch(e){}if(res.status==404&&!j.error)throw Object.assign(new Error("send"),{code:"offline_preview"});
+  if(!res.ok||!j.ok)throw Object.assign(new Error("send"),{code:j.error||("http_"+res.status),detail:j.detail})}
+/* verständliche Fehlertexte, mit Code für die Fehlersuche */
+const errText=e=>{const c=e&&e.code;return ({not_configured:"Zugangsdaten in Netlify fehlen – SMTP_USER, SMTP_PASS, MAIL_TO prüfen",forbidden:"ALLOWED_ORIGIN in Netlify passt nicht zur Adresse der App",smtp:"IONOS hat die Mail abgelehnt"+(e.detail?": "+e.detail:" – Passwort/Postfach prüfen"),too_large:"Bericht zu groß – bitte Fotos entfernen",bad_request:"ungültige Anfrage",bad_email:"E-Mail-Adresse ungültig",netz:"keine Verbindung zum Server",offline_preview:"geht nur in der Netlify-Version"})[c]||("Fehlercode "+c)};
 /* Büro bekommt immer beide Fassungen; sind sie zusammen zu groß, kommen sie in zwei Mails */
 async function sendOffice(files,subject,text){const list=await Promise.all(files.map(async f=>({name:f.name,data:await b64(f.blob)})));
   if(list.reduce((n,f)=>n+f.data.length,0)<=5.5e6){await post(subject,text,list);return 1}
@@ -528,7 +541,7 @@ $("office").onclick=()=>{if(!check())return;
     const subj=[$("koaw").checked&&"!KOA","Montagebericht",$("doc").value,$("obj").value&&"– "+$("obj").value].filter(Boolean).join(" ");
     try{const n=await sendOffice([a,b],subj,infoText()+"\nMonteur: "+Z.map(r=>r.m).filter(Boolean).join(", ")+(sent?"\nAn Kunden gesendet am "+sent.when+" an "+sent.to:"\nNicht an den Kunden gesendet"));
       const t=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});m.classList.add("ok");m.textContent="Interne Fassung und Kundenfassung ans Büro gesendet um "+t+" Uhr"+(n>1?" (in "+n+" Mails)":"")+". Danach kannst du oben „Neuer Bericht“ antippen."}
-    catch(e){m.classList.remove("ok");m.textContent=e&&e.code=="too_large"?"Der Bericht ist zu groß zum Senden. Bitte ein paar Fotos entfernen und erneut senden.":"Senden ans Büro hat nicht geklappt. Der Bericht bleibt gespeichert, bitte später erneut versuchen. Hier in der Vorschau geht das nur in der Netlify-Version der App."}})};
+    catch(e){m.classList.remove("ok");m.textContent="Senden ans Büro hat nicht geklappt ("+errText(e)+"). Der Bericht bleibt gespeichert."}})};
 load();
 </script>
 
