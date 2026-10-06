@@ -1,0 +1,29 @@
+Montagebericht-App auf Netlify einrichten
+=========================================
+
+Inhalt
+  index.html                          die App (funktioniert auch offline, Senden braucht Internet)
+  netlify/functions/send-intern.mjs   verschickt die PDFs per IONOS ans Büro
+  package.json, netlify.toml          Einstellungen für Netlify
+
+1. Neue Site anlegen
+   Wichtig: Einfaches Hineinziehen (Drag & Drop) reicht NICHT, dabei baut Netlify die
+   Versand-Funktion nicht. Stattdessen den Ordner per Git-Repository verbinden oder mit
+   der Netlify CLI hochladen:  npm install  →  netlify deploy --prod
+   (Claude kann das auch über die Netlify-Verbindung erledigen.)
+
+2. Umgebungsvariablen setzen
+   Site configuration → Environment variables:
+     SMTP_USER       wartung@elektro-grapp.de   (IONOS-Postfach zum Versenden)
+     SMTP_PASS       Passwort dieses Postfachs
+     MAIL_TO         wartung@elektro-grapp.de   (Empfänger im Büro)
+     ALLOWED_ORIGIN  https://<eure-site>.netlify.app
+   Optional: SMTP_PORT 465 statt 587, falls 587 nicht geht.
+   Danach einmal neu deployen.
+
+3. Testen
+   App auf dem iPad öffnen, Testbericht ausfüllen, „Ans Büro senden“.
+   Die Mail kommt mit interner Fassung und Kundenfassung als Anhang.
+
+4. Auf die iPads bringen
+   Wie bei den Wartungsprotokollen als Web-Clip / Home-Bildschirm-Link über Apple Business.
