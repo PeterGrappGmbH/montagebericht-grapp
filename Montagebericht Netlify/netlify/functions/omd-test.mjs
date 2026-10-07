@@ -45,11 +45,13 @@ export default async (req) => {
   const token = { felder: Object.keys(tok), token_type: tok.token_type, expires_in: tok.expires_in };
 
   // 2) Artikelabfrage – Parameter-Varianten durchprobieren
-  const data = "basic,additional,prices,descriptions,logistics";
+  const pk = ["basic", "additional", "prices", "descriptions", "logistics"];
   const tries = [
-    `supplierPid=${pid}&data=${data}`,
-    `supplierPids=${pid}&data=${data}`,
-    `supplierPid=${pid}`,
+    `supplierPid=${pid}&datapackage=${pk.join(",")}`,
+    `supplierPid=${pid}&${pk.map((x) => "datapackage=" + x).join("&")}`,
+    `supplierPid=${pid}&datapackage=${pk.join("|")}`,
+    `supplierPid=${pid}&datapackage=basic,prices`,
+    `supplierPid=${pid}&datapackage=prices`,
   ];
   const versuche = [];
   for (const q of tries) {
