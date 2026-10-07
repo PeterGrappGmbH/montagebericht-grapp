@@ -15,11 +15,16 @@ const json = (o, status = 200) =>
   new Response(JSON.stringify(o, null, 2), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 
 // alles, was nach Netto-/Einkaufspreis aussieht, entfernen
-const strip = (v) => {
-  if (Array.isArray(v)) return v.slice(0, 20).map(strip);
+// entfernte Felder werden nur mit Namen gemeldet (ohne Wert)
+const removed = new Set();
+const strip = (v, path = "") => {
+  if (Array.isArray(v)) return v.slice(0, 20).map((x) => strip(x, path + "[]"));
   if (v && typeof v === "object") {
     const o = {};
-    for (const [k, x] of Object.entries(v)) if (!/net|purchase|einkauf|ek_?preis|discount|rabatt/i.test(k)) o[k] = strip(x);
+    for (const [k, x] of Object.entries(v)) {
+      if (/net|purchase|einkauf|ek_?preis|discount|rabatt/i.test(k)) removed.add(path + "." + k);
+      else o[k] = strip(x, path + "." + k);
+    }
     return o;
   }
   return typeof v === "string" && v.length > 300 ? v.slice(0, 300) + "…" : v;
@@ -45,13 +50,9 @@ export default async (req) => {
   const token = { felder: Object.keys(tok), token_type: tok.token_type, expires_in: tok.expires_in };
 
   // 2) Artikelabfrage – Parameter-Varianten durchprobieren
-  const pk = ["basic", "additional", "prices", "descriptions", "logistics"];
+  const pk = (u.searchParams.get("pk") || "basic,prices").split(",").filter((x) => /^[a-zA-Z]+$/.test(x)).slice(0, 12);
   const tries = [
-    `supplierPid=${pid}&datapackage=${pk.join(",")}`,
     `supplierPid=${pid}&${pk.map((x) => "datapackage=" + x).join("&")}`,
-    `supplierPid=${pid}&datapackage=${pk.join("|")}`,
-    `supplierPid=${pid}&datapackage=basic,prices`,
-    `supplierPid=${pid}&datapackage=prices`,
   ];
   const versuche = [];
   for (const q of tries) {
@@ -60,7 +61,7 @@ export default async (req) => {
       const r = await fetch(url, { headers: { Authorization: `Bearer ${tok.access_token}`, Accept: "application/json" } });
       const t = await r.text(); let b; try { b = JSON.parse(t); } catch {}
       versuche.push({ abfrage: q, status: r.status });
-      if (r.ok && b) return json({ ok: true, artikel: pid, token, versuche, antwort: strip(b) });
+      if (r.ok && b) { const antwort = strip(b); return json({ ok: true, artikel: pid, entfernteFelder: [...removed], versuche, antwort }); }
       versuche[versuche.length - 1].antwort = (t || "").slice(0, 300);
     } catch (e) { versuche.push({ abfrage: q, fehler: String(e && e.message) }); }
   }
