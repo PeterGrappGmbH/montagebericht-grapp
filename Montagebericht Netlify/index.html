@@ -313,7 +313,7 @@ const PRICE={"0062653":{"lp":4.7,"cu":0},"0106872":{"lp":588.0,"cu":566.0},"0110
 /* Verkaufspreis je Mengeneinheit = (Listenpreis + 2 × Kupferzuschlag) / Preiseinheit */
 const vk=r=>{const x=PRICE[r.a];if(!x)return null;const pe=+r.pe||1;return (x.lp+2*(x.cu||0))/pe};
 const qn=v=>parseFloat(String(v||"").replace(",","."))||0;
-let sch="",YN={klein:"",dicht:""},ver="kunde",sent=null;
+let sch="",YN={klein:"",dicht:""},ver="kunde",sent=null,officeSent=null;
 const anz=r=>r.an=="Sonstige"?(r.ans||""):r.an;
 const TB=["Funktionsprüfung durchgeführt, i. O.","Arbeiten nach Angebot erledigt","Arbeiten abgeschlossen","Restarbeiten offen","Kunde nicht angetroffen","Material fehlt – Folgetermin nötig"];
 $("tb").innerHTML=TB.map(t=>`<button type="button" class="chip">${esc(t)}</button>`).join("");
@@ -494,29 +494,29 @@ const idb=()=>IDBP||(IDBP=new Promise((ok,no)=>{try{const r=indexedDB.open("mber
 const idbRun=(m,f)=>idb().then(d=>new Promise((ok,no)=>{const t=d.transaction("ph",m),q=f(t.objectStore("ph"));t.oncomplete=()=>ok(q&&q.result);t.onerror=()=>no(t.error)}));
 const idbPut=(k,v)=>idbRun("readwrite",s=>s.put(v,k)).catch(()=>{}),idbGet=k=>idbRun("readonly",s=>s.get(k)).catch(()=>null),idbClear=()=>idbRun("readwrite",s=>s.clear()).catch(()=>{});
 let saveT=null,loading=true;
-function save(){if(loading)return;clearTimeout(saveT);saveT=setTimeout(()=>{const st={f:{},Z,M,MG,YN,sch,koaw:$("koaw").checked,sent,ph:PHS.map(x=>({id:x.id,c:x.c,i:x.i})),sig:{}};
+function save(){if(loading)return;clearTimeout(saveT);saveT=setTimeout(()=>{const st={f:{},Z,M,MG,YN,sch,koaw:$("koaw").checked,sent,office:officeSent,ph:PHS.map(x=>({id:x.id,c:x.c,i:x.i})),sig:{}};
   FIELDS.forEach(k=>st.f[k]=$(k).value);["cm","ck"].forEach(k=>{if(used[k])st.sig[k]=$(k).toDataURL()});
   try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}},300)}
 document.addEventListener("input",save);document.addEventListener("change",save);document.addEventListener("click",e=>{if(e.target.closest("button"))save()});
 async function load(){let st=null;try{st=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
-  if(st){FIELDS.forEach(k=>{if(st.f&&st.f[k]!=null)$(k).value=st.f[k]});Z=st.Z&&st.Z.length?st.Z:[newZ()];M=st.M&&st.M.length?st.M:[newM()];MG=st.MG||[];YN=st.YN||{klein:"",dicht:""};sch=st.sch||"";$("koaw").checked=!!st.koaw;sent=st.sent||null;
+  if(st){FIELDS.forEach(k=>{if(st.f&&st.f[k]!=null)$(k).value=st.f[k]});Z=st.Z&&st.Z.length?st.Z:[newZ()];M=st.M&&st.M.length?st.M:[newM()];MG=st.MG||[];YN=st.YN||{klein:"",dicht:""};sch=st.sch||"";$("koaw").checked=!!st.koaw;sent=st.sent||null;officeSent=st.office||null;
     for(const [k,u] of Object.entries(st.sig||{})){await new Promise(r=>{const im=new Image();im.onload=()=>{$(k).getContext("2d").drawImage(im,0,0);used[k]=1;r()};im.onerror=r;im.src=u})}
     PHS=[];for(const x of st.ph||[]){const u=await idbGet(x.id);if(u)PHS.push({...x,u})}}
   if(!$("dat").value)$("dat").value=today();if(!$("dcm").value)$("dcm").value=today();
-  drawZ();drawM();drawMG();drawPH();paintPills();loading=false}
+  drawZ();drawM();drawMG();drawPH();paintPills();lockSend();loading=false}
 function paintPills(){document.querySelectorAll("[data-sch]").forEach(b=>{b.classList.toggle("s",b.dataset.sch==sch);b.classList.toggle("nein",b.dataset.sch=="ja"&&sch=="ja")});$("schtx").hidden=sch!="ja";
   ["klein","dicht"].forEach(k=>document.querySelectorAll(`[data-yn="${k}"]`).forEach(b=>{b.classList.toggle("s",b.dataset.v==YN[k]);b.classList.toggle("nein",b.dataset.v=="nein"&&YN[k]=="nein")}))}
 $("newr").onclick=()=>{$("rsbar").hidden=false;$("rsbar").scrollIntoView({block:"center"})};
 $("rsno").onclick=()=>{$("rsbar").hidden=true};
 $("rsyes").onclick=async()=>{loading=true;try{localStorage.removeItem(KEY)}catch(e){}await idbClear();
-  FIELDS.forEach(k=>$(k).value="");$("koaw").checked=false;Z=[newZ()];M=[newM()];MG=[];YN={klein:"",dicht:""};sch="";sent=null;PHS=[];$("mq").value="";
+  FIELDS.forEach(k=>$(k).value="");$("koaw").checked=false;Z=[newZ()];M=[newM()];MG=[];YN={klein:"",dicht:""};sch="";sent=null;officeSent=null;PHS=[];$("mq").value="";
   ["cm","ck"].forEach(k=>{$(k).getContext("2d").clearRect(0,0,600,180);used[k]=0});document.querySelectorAll(".miss").forEach(x=>x.classList.remove("miss"));$("msg").textContent="";
   $("rsbar").hidden=true;show(false);await load()};
 /* ---------- Entwicklertools: Bericht aus PDF laden und bearbeiten (Passwort) ---------- */
 const DEV_HASH="e20c70967848fe617bed988ea038c69508cbc6dea63016bdc923fcef5cf87301";
 const sha=async t=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)))).map(b=>b.toString(16).padStart(2,"0")).join("");
 const devUnlocked=()=>{try{return sessionStorage.getItem("mb-dev")=="1"}catch(e){return false}};
-function devShow(){const u=devUnlocked();$("devlock").hidden=u;$("devtools").hidden=!u}
+function devShow(){const u=devUnlocked();$("devlock").hidden=u;$("devtools").hidden=!u;lockSend()}
 $("devopen").onclick=()=>{const b=$("devbox");b.hidden=!b.hidden;$("devopen").setAttribute("aria-expanded",!b.hidden);devShow();if(!b.hidden&&!devUnlocked())$("devpw").focus()};
 $("devgo").onclick=async()=>{const m=$("devmsg");let ok=false;try{ok=(await sha($("devpw").value))==DEV_HASH}catch(e){}
   $("devpw").value="";if(ok){try{sessionStorage.setItem("mb-dev","1")}catch(e){}m.classList.add("ok");m.textContent="Entwicklertools entsperrt.";devShow()}else{m.classList.remove("ok");m.textContent="Passwort falsch."}};
@@ -526,7 +526,7 @@ $("devlockbtn").onclick=()=>{try{sessionStorage.removeItem("mb-dev")}catch(e){}$
 function pdfData(vv){const st={v:1,f:{},Z,M,MG,YN,sch,koaw:vv=="intern"&&$("koaw").checked,sent,sig:{},ph:PHS.filter(x=>vv=="intern"||!x.i).map(x=>({id:x.id,c:x.c,i:x.i,u:x.u}))};
   FIELDS.forEach(k=>st.f[k]=$(k).value);["cm","ck"].forEach(k=>{if(used[k])st.sig[k]=$(k).toDataURL()});return st}
 async function applyState(st){loading=true;FIELDS.forEach(k=>$(k).value=st.f&&st.f[k]!=null?st.f[k]:"");
-  Z=st.Z&&st.Z.length?st.Z:[newZ()];M=st.M&&st.M.length?st.M:[newM()];MG=st.MG||[];YN=st.YN||{klein:"",dicht:""};sch=st.sch||"";$("koaw").checked=!!st.koaw;sent=st.sent||null;
+  Z=st.Z&&st.Z.length?st.Z:[newZ()];M=st.M&&st.M.length?st.M:[newM()];MG=st.MG||[];YN=st.YN||{klein:"",dicht:""};sch=st.sch||"";$("koaw").checked=!!st.koaw;sent=st.sent||null;officeSent=null;
   ["cm","ck"].forEach(k=>{$(k).getContext("2d").clearRect(0,0,600,180);used[k]=0});
   for(const [k,u] of Object.entries(st.sig||{})){await new Promise(r=>{const im=new Image();im.onload=()=>{$(k).getContext("2d").drawImage(im,0,0);used[k]=1;r()};im.onerror=r;im.src=u})}
   await idbClear();PHS=(st.ph||[]).map(x=>({id:x.id,c:x.c||"",i:!!x.i,u:x.u}));
@@ -571,7 +571,11 @@ async function deliver(files,text){let dl=null;
 const infoText=()=>["Montagebericht",$("doc").value&&"Dok.-Nr.: "+$("doc").value,$("w").value&&"Projekt / W-Nummer: "+$("w").value,$("obj").value&&"Objekt / Kunde: "+$("obj").value,($("astr").value||$("aplz").value)&&"Adresse: "+[$("astr").value,$("aplz").value].filter(Boolean).join(", ")].filter(Boolean).join("\n");
 async function busy(btn,label,fn){const m=$("msg"),old=btn.textContent;btn.disabled=true;btn.textContent=label;m.classList.remove("ok");m.textContent="";
   try{await fn(m)}catch(e){console.error(e);m.classList.remove("ok");m.textContent="PDF konnte nicht erstellt werden. Bitte erneut versuchen."}finally{btn.disabled=false;btn.textContent=old}}
-$("send").onclick=()=>{if(!check())return;const to=$("kmail").value.trim(),m=$("msg");
+/* Nach dem Versand ans Büro ist kein Kundenversand mehr möglich (außer in den Entwicklertools) */
+function lockSend(){const l=!!officeSent&&!devUnlocked(),b=$("send");b.disabled=l;b.title=l?"Bereits ans Büro gesendet":"";
+  let n=$("sendlock");if(!n){n=document.createElement("p");n.id="sendlock";n.className="note";b.closest(".act").after(n)}
+  n.hidden=!l;n.textContent=l?"An Kunden senden ist gesperrt: Der Bericht wurde am "+officeSent.when+" ans Büro gesendet. Den Versand an den Kunden übernimmt jetzt das Büro.":""}
+$("send").onclick=()=>{if(officeSent&&!devUnlocked()){lockSend();return}if(!check())return;const to=$("kmail").value.trim(),m=$("msg");
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){$("kmail").classList.add("miss");m.classList.remove("ok");m.textContent="Bitte eine gültige E-Mail-Adresse des Kunden eintragen.";$("kmail").focus();return}
   $("kmail").classList.remove("miss");
   if(!navigator.onLine){m.classList.remove("ok");m.textContent="Kein Internet. Der Bericht bleibt gespeichert, bitte später erneut senden.";return}
@@ -600,7 +604,7 @@ $("office").onclick=()=>{if(!check())return;
   busy($("office"),"Wird ans Büro gesendet …",async m=>{const a=await makePdf("intern"),b=await makePdf("kunde");
     const subj=[$("koaw").checked&&"!KOA","Montagebericht",$("doc").value,$("obj").value&&"– "+$("obj").value].filter(Boolean).join(" ");
     try{const n=await sendOffice([a,b],subj,infoText()+"\nMonteur: "+Z.map(r=>r.m).filter(Boolean).join(", ")+(sent?"\nAn Kunden gesendet am "+sent.when+" an "+sent.to:"\nNicht an den Kunden gesendet"));
-      const t=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});m.classList.add("ok");m.textContent="Interne Fassung und Kundenfassung ans Büro gesendet um "+t+" Uhr"+(n>1?" (in "+n+" Mails)":"")+". Danach kannst du oben „Neuer Bericht“ antippen."}
+      const n0=new Date(),t=n0.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});officeSent={when:n0.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit"})+", "+t+" Uhr"};save();lockSend();m.classList.add("ok");m.textContent="Interne Fassung und Kundenfassung ans Büro gesendet um "+t+" Uhr"+(n>1?" (in "+n+" Mails)":"")+". Danach kannst du oben „Neuer Bericht“ antippen."}
     catch(e){m.classList.remove("ok");m.textContent="Senden ans Büro hat nicht geklappt ("+errText(e)+"). Der Bericht bleibt gespeichert."}})};
 load();
 </script>
