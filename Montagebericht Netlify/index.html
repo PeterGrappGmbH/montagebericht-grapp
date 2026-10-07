@@ -248,7 +248,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 </div>
 
 <div id="v-pdf" role="tabpanel" aria-labelledby="t-pdf" hidden>
-  <div class="pills" style="justify-content:center;margin:0 0 12px"><button type="button" class="pill s" data-ver="kunde">Kundenfassung</button><button type="button" class="pill" data-ver="intern">Interne Fassung</button></div>
+  <div class="pills" id="verbar" hidden style="justify-content:center;margin:0 0 12px"><button type="button" class="pill s" data-ver="kunde">Kundenfassung</button><button type="button" class="pill" data-ver="intern">Interne Fassung</button></div>
   <p class="fname" id="fname"></p>
   <div class="stage" id="stage"><div class="paper" id="paper"></div></div>
   <div class="stage" id="stage2" style="margin-top:16px" hidden><div class="paper" id="paper2"></div></div>
@@ -367,7 +367,7 @@ document.addEventListener("click",e=>{const t=e.target;
   const sgb=t.closest("[data-sga]");if(sgb){const i=+sgb.dataset.sgi,x=ART.find(a=>a[0]==sgb.dataset.sga);Object.assign(M[i],{a:x[0],b:x[1],e:x[3],pe:x[5]});drawM();const q=document.querySelector(`[data-m="${i}"][data-f="q"]`);q.focus();q.select()}
   if(t.dataset.sch){sch=t.dataset.sch;document.querySelectorAll("[data-sch]").forEach(b=>{b.classList.toggle("s",b.dataset.sch==sch);b.classList.toggle("nein",b.dataset.sch=="ja"&&sch=="ja")});$("schtx").hidden=sch!="ja";$("r-sch").classList.remove("miss")}
   if(t.dataset.yn){const k=t.dataset.yn;YN[k]=t.dataset.v;document.querySelectorAll(`[data-yn="${k}"]`).forEach(b=>{b.classList.toggle("s",b.dataset.v==YN[k]);b.classList.toggle("nein",b.dataset.v=="nein"&&YN[k]=="nein")});$("r-"+k).classList.remove("miss")}
-  if(t.dataset.ver){ver=t.dataset.ver;document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));render()}
+  if(t.dataset.ver){if(t.dataset.ver=="intern"&&!devUnlocked())return;ver=t.dataset.ver;document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));render()}
   if(t.dataset.clr){clr($(t.dataset.clr))}
 });
 $("addz").onclick=()=>{Z.push(newZ(Z[Z.length-1]));drawZ();save()};
@@ -483,7 +483,7 @@ function render(){
 function fit1(p,s){const w=s.parentElement.clientWidth;const k=Math.min(1,w/794);p.style.transform=`scale(${k})`;s.style.width=794*k+"px";s.style.height=p.offsetHeight*k+"px"}
 function fit(){fit1($("paper"),$("stage"));if(!$("stage2").hidden)fit1($("paper2"),$("stage2"))}
 addEventListener("resize",()=>{if(!$("v-pdf").hidden)fit()});
-function show(pdf){$("v-form").hidden=pdf;$("v-pdf").hidden=!pdf;$("t-form").setAttribute("aria-selected",!pdf);$("t-pdf").setAttribute("aria-selected",pdf);if(pdf)render();scrollTo(0,0)}
+function show(pdf){if(pdf)syncVer();$("v-form").hidden=pdf;$("v-pdf").hidden=!pdf;$("t-form").setAttribute("aria-selected",!pdf);$("t-pdf").setAttribute("aria-selected",pdf);if(pdf)render();scrollTo(0,0)}
 $("t-form").onclick=()=>show(false);$("t-pdf").onclick=()=>show(true);$("go").onclick=()=>{if(check())show(true)};
 $("back").onclick=()=>show(false);
 
@@ -516,7 +516,9 @@ $("rsyes").onclick=async()=>{loading=true;try{localStorage.removeItem(KEY)}catch
 const DEV_HASH="e20c70967848fe617bed988ea038c69508cbc6dea63016bdc923fcef5cf87301";
 const sha=async t=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)))).map(b=>b.toString(16).padStart(2,"0")).join("");
 const devUnlocked=()=>{try{return sessionStorage.getItem("mb-dev")=="1"}catch(e){return false}};
-function devShow(){const u=devUnlocked();$("devlock").hidden=u;$("devtools").hidden=!u;lockSend()}
+function devShow(){const u=devUnlocked();$("devlock").hidden=u;$("devtools").hidden=!u;lockSend();syncVer()}
+/* Umschalten auf die interne Fassung (mit Preisen) nur bei entsperrten Entwicklertools */
+function syncVer(){const u=devUnlocked();$("verbar").hidden=!u;if(!u&&ver!="kunde"){ver="kunde";document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));if(!$("v-pdf").hidden)render()}}
 $("devopen").onclick=()=>{const b=$("devbox");b.hidden=!b.hidden;$("devopen").setAttribute("aria-expanded",!b.hidden);devShow();if(!b.hidden&&!devUnlocked())$("devpw").focus()};
 $("devgo").onclick=async()=>{const m=$("devmsg");let ok=false;try{ok=(await sha($("devpw").value))==DEV_HASH}catch(e){}
   $("devpw").value="";if(ok){try{sessionStorage.setItem("mb-dev","1")}catch(e){}m.classList.add("ok");m.textContent="Entwicklertools entsperrt.";devShow()}else{m.classList.remove("ok");m.textContent="Passwort falsch."}};
@@ -606,7 +608,7 @@ $("office").onclick=()=>{if(!check())return;
     try{const n=await sendOffice([a,b],subj,infoText()+"\nMonteur: "+Z.map(r=>r.m).filter(Boolean).join(", ")+(sent?"\nAn Kunden gesendet am "+sent.when+" an "+sent.to:"\nNicht an den Kunden gesendet"));
       const n0=new Date(),t=n0.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});officeSent={when:n0.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit"})+", "+t+" Uhr"};save();lockSend();m.classList.add("ok");m.textContent="Interne Fassung und Kundenfassung ans Büro gesendet um "+t+" Uhr"+(n>1?" (in "+n+" Mails)":"")+". Danach kannst du oben „Neuer Bericht“ antippen."}
     catch(e){m.classList.remove("ok");m.textContent="Senden ans Büro hat nicht geklappt ("+errText(e)+"). Der Bericht bleibt gespeichert."}})};
-load();
+syncVer();load();
 </script>
 
 </body></html>
