@@ -14,7 +14,7 @@ const json = (o, status = 200, cache = "no-store") =>
   new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": cache } });
 const clean = (u) => String(u || "").trim().toLowerCase().replace(/\/+$/, "").replace(/^http:/, "https:");
 const num = (v) => { const n = parseFloat(String(v ?? "").replace(",", ".")); return Number.isFinite(n) ? n : null; };
-const today = () => new Date().toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" });
+const today = () => new Date().toLocaleDateString("de-DE", { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", year: "numeric" });
 
 // Zwischenspeicher, solange die Funktion „warm“ ist
 const C = globalThis.__mbPreise || (globalThis.__mbPreise = { token: null, tokenExp: 0, kupfer: null, art: new Map() });
