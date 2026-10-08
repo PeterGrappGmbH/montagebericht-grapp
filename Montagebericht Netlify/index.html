@@ -39,7 +39,7 @@ details.opt{margin:8px 0 2px}details.opt>summary{cursor:pointer;font-weight:700;
 .grid label input,.grid label select{background:var(--card)}
 .grid .wide{grid-column:1/-1}
 .sum{font-variant-numeric:tabular-nums;font-weight:800;color:var(--tx);font-size:17px;padding:10px 0}
-.add{width:100%;min-height:54px;border-radius:10px;border:2px dashed var(--tx);background:var(--card);color:var(--tx);font:700 16px inherit;font-family:inherit;cursor:pointer;margin-top:4px}
+.add{width:100%;min-height:54px;border-radius:10px;border:2px dashed var(--tx);background:var(--card);color:var(--tx);font-weight:700;font-size:16px;font-family:inherit;cursor:pointer;margin-top:4px}
 .del{border:0;background:none;color:var(--mut);text-decoration:underline;font:inherit;font-size:14px;cursor:pointer;padding:4px}
 .pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .pill{min-height:46px;min-width:88px;padding:0 14px;border:2px solid var(--ln);border-radius:23px;background:var(--in);color:var(--tx);font:600 16px inherit;font-family:inherit;cursor:pointer}
@@ -52,7 +52,7 @@ canvas{width:100%;max-width:100%;height:auto;aspect-ratio:10/3;background:#fff;b
 .sig .lab{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:15px}
 .note{font-size:14px;color:var(--mut);margin:6px 0}
 .act{display:flex;gap:8px;margin-top:6px}
-.act button{flex:1;min-height:56px;border-radius:10px;border:2px solid var(--tx);background:var(--tx);color:var(--bg);font:700 16px inherit;font-family:inherit;cursor:pointer}
+.act button{flex:1;min-height:56px;border-radius:10px;border:2px solid var(--tx);background:var(--tx);color:var(--bg);font-weight:700;font-size:16px;font-family:inherit;cursor:pointer}
 .act .alt{background:var(--card);color:var(--tx)}
 .pair{grid-column:1/-1;display:grid;align-items:end;grid-template-columns:1fr 1fr;gap:8px}
 .mg{padding:10px 0;border-bottom:1px solid var(--ln);display:grid;gap:8px}.mghd{font-weight:400}
@@ -93,7 +93,19 @@ input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;displa
 input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;min-height:24px}
 .sig>div{gap:10px}.sig>div>input{display:block;flex:none}
 .sd{display:flex;flex-direction:column;gap:6px;margin-top:2px;flex:none}
-.devsec{background:transparent;border:1px dashed var(--ln)}.devsec .lnk{padding:6px 0}
+#v-form{padding-bottom:44px}
+.introw{position:fixed;left:50%;transform:translateX(-50%);bottom:env(safe-area-inset-bottom,0px);z-index:40;text-align:center}
+.intlnk{background:none;border:0;color:var(--mut);font:inherit;font-size:13px;padding:6px 8px 4px;text-decoration:underline;opacity:.7;cursor:pointer}
+.rsbg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:99}
+.rsbg[hidden]{display:none}
+.rsbox{background:var(--card);color:var(--tx);border:2px solid var(--tx);border-radius:14px;padding:20px;max-width:440px;width:100%;max-height:88vh;overflow:auto}
+.rsbox h3{margin:0 0 8px;font-size:22px;color:#c62828}
+.rsbox .hint{color:var(--mut);margin:0 0 12px;font-size:15px}.rsbox .hint.small{font-size:13px}.rsbox .hint.bad{color:#c62828}
+.rsbox input[type=password]{width:100%;margin:0 0 10px;min-height:48px;font-size:17px;padding:8px 12px;border:1px solid var(--ln);border-radius:10px;box-sizing:border-box}
+.rsbox .big{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;width:100%;min-height:56px;margin:0 0 10px;border:2px solid var(--tx);border-radius:10px;background:var(--card);color:var(--tx);font-weight:700;font-size:16px;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.rsact{display:flex;gap:10px;margin-top:6px}
+.rsact button{flex:1;min-height:56px;border-radius:10px;border:2px solid var(--tx);font-weight:700;font-size:16px;font-family:inherit;background:var(--tx);color:#fff;cursor:pointer}
+.rsact button.alt{background:var(--card);color:var(--tx)}
 .miss{outline:2px solid var(--bad);outline-offset:2px;border-radius:8px;background:color-mix(in srgb,var(--bad) 8%,transparent)}
 .msg{min-height:1em;margin:8px 0 0;font-size:15px;font-weight:600;color:var(--bad)}.msg.ok{color:var(--ok)}
 .paper .stamp{border:2px solid #17703f;color:#17703f;border-radius:6px;padding:6px 10px;font-weight:700;font-size:12px;margin:10px 0 0;display:inline-block}
@@ -229,22 +241,27 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   <p class="note"><b>An Kunden senden:</b> schickt die Kundenfassung direkt per E-Mail an die Adresse oben (Absender wartung@, das Büro bekommt eine Kopie).<br><b>Ans Büro senden:</b> schickt interne Fassung und Kundenfassung direkt per E-Mail ans Büro. Auf dem iPad wird dabei nichts gespeichert. Erst den Kunden, dann das Büro – dann steht der Versand an den Kunden mit im Bericht.</p>
 </section>
 
-<section class="devsec">
-  <button type="button" class="lnk" id="devopen" aria-expanded="false" aria-controls="devbox">Entwicklertools</button>
-  <div id="devbox" hidden>
+<!-- Entwicklertools wie bei den Wartungsprotokollen: unauffälliger Link unten, Passwort-Dialog -->
+<div class="introw"><button type="button" class="intlnk" id="devopen">Entwicklertools</button></div>
+<div class="rsbg" id="devbg" hidden>
+  <div class="rsbox" role="dialog" aria-modal="true" aria-labelledby="devh">
+    <h3 id="devh">Entwicklertools</h3>
     <div id="devlock">
-      <label class="r"><span>Passwort</span><input id="devpw" type="password" autocomplete="off"></label>
-      <div class="act"><button type="button" class="alt" id="devgo">Entsperren</button></div>
+      <p class="hint">Bitte Passwort eingeben.</p>
+      <input type="password" id="devpw" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Passwort">
+      <p class="hint bad" id="devbad" hidden>Falsches Passwort.</p>
+      <div class="rsact"><button type="button" class="alt" id="devno">Abbrechen</button><button type="button" id="devgo">Öffnen</button></div>
     </div>
     <div id="devtools" hidden>
-      <p class="note">Einen gesendeten Montagebericht (Kunden- oder interne PDF aus dieser App) laden, nachträglich ändern, z. B. Monteur, Anfahrt oder Material ergänzen, und neu erstellen.</p>
-      <div class="camrow"><label class="cambtn alt">Bericht aus PDF laden<input class="vh" type="file" accept="application/pdf,.pdf" id="devfile"></label></div>
-      <div class="act"><button type="button" class="alt" id="devdl">Beide PDFs herunterladen</button><button type="button" class="alt" id="devlockbtn">Sperren</button></div>
-      <p class="note">Hinweis: Aus der Kundenfassung lassen sich interne Fotos und der KOA-Haken nicht wiederherstellen. Dafür die interne PDF laden. PDFs, die vor dieser Version erstellt wurden, enthalten noch keine Daten zum Laden.</p>
+      <p class="hint">Einen gesendeten Montagebericht (Kunden- oder interne PDF aus dieser App) laden, nachträglich ändern, z. B. Monteur, Anfahrt oder Material ergänzen, und neu erstellen.</p>
+      <label class="big">Bericht aus PDF laden<input class="vh" type="file" accept="application/pdf,.pdf" id="devfile"></label>
+      <button type="button" class="big" id="devdl">Beide PDFs herunterladen</button>
+      <p class="hint small">Aus der Kundenfassung lassen sich interne Fotos und der KOA-Haken nicht wiederherstellen. Dafür die interne PDF laden.</p>
+      <p class="msg" id="devmsg" role="status"></p>
+      <div class="rsact"><button type="button" class="alt" id="devlockbtn">Sperren</button><button type="button" id="devclose">Schließen</button></div>
     </div>
-    <p class="msg" id="devmsg" role="status"></p>
   </div>
-</section>
+</div>
 </div>
 
 <div id="v-pdf" role="tabpanel" aria-labelledby="t-pdf" hidden>
@@ -515,20 +532,23 @@ $("rsyes").onclick=async()=>{loading=true;try{localStorage.removeItem(KEY)}catch
   ["cm","ck"].forEach(k=>{$(k).getContext("2d").clearRect(0,0,600,180);used[k]=0});document.querySelectorAll(".miss").forEach(x=>x.classList.remove("miss"));$("msg").textContent="";
   $("rsbar").hidden=true;show(false);await load()};
 /* ---------- Entwicklertools: Bericht aus PDF laden und bearbeiten (Passwort) ---------- */
-const DEV_HASH="e20c70967848fe617bed988ea038c69508cbc6dea63016bdc923fcef5cf87301";
+const DEV_HASH="0192b8fa2928a2d55e39f562a637819fadeb9b8b9eb661092bb0eeedef9dbb25";
 const sha=async t=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)))).map(b=>b.toString(16).padStart(2,"0")).join("");
 const devUnlocked=()=>{try{return sessionStorage.getItem("mb-dev")=="1"}catch(e){return false}};
-function devShow(){const u=devUnlocked();$("devlock").hidden=u;$("devtools").hidden=!u;lockSend();syncVer()}
-/* Umschalten auf die interne Fassung (mit Preisen) nur bei entsperrten Entwicklertools */
+function devShow(){const u=devUnlocked();$("devlock").hidden=u;$("devtools").hidden=!u;$("devopen").textContent=u?"Entwicklertools (entsperrt)":"Entwicklertools";lockSend();syncVer()}
 /* In der Claude-Vorschau (nicht auf netlify.app) ist der Umschalter immer da – nur zur Kontrolle */
 const PREVIEW=!/netlify\.app$|elektro-grapp/.test(location.hostname);
 const verOk=()=>PREVIEW||devUnlocked();
 function syncVer(){const u=verOk();$("verbar").hidden=!u;if(!u&&ver!="kunde"){ver="kunde";document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));if(!$("v-pdf").hidden)render()}}
-$("devopen").onclick=()=>{const b=$("devbox");b.hidden=!b.hidden;$("devopen").setAttribute("aria-expanded",!b.hidden);devShow();if(!b.hidden&&!devUnlocked())$("devpw").focus()};
-$("devgo").onclick=async()=>{const m=$("devmsg");let ok=false;try{ok=(await sha($("devpw").value))==DEV_HASH}catch(e){}
-  $("devpw").value="";if(ok){try{sessionStorage.setItem("mb-dev","1")}catch(e){}m.classList.add("ok");m.textContent="Entwicklertools entsperrt.";devShow()}else{m.classList.remove("ok");m.textContent="Passwort falsch."}};
+const devClose=()=>{$("devbg").hidden=true;$("devbad").hidden=true;$("devpw").value=""};
+$("devopen").onclick=()=>{$("devmsg").textContent="";$("devbg").hidden=false;devShow();if(!devUnlocked())$("devpw").focus()};
+$("devno").onclick=devClose;$("devclose").onclick=devClose;
+$("devbg").addEventListener("click",e=>{if(e.target.id=="devbg")devClose()});
+document.addEventListener("keydown",e=>{if(e.key=="Escape"&&!$("devbg").hidden)devClose()});
+$("devgo").onclick=async()=>{let ok=false;try{ok=(await sha($("devpw").value.normalize("NFC")))==DEV_HASH}catch(e){}
+  $("devpw").value="";if(ok){try{sessionStorage.setItem("mb-dev","1")}catch(e){}$("devbad").hidden=true;devShow()}else{$("devbad").hidden=false;$("devpw").focus()}};
 $("devpw").addEventListener("keydown",e=>{if(e.key=="Enter")$("devgo").click()});
-$("devlockbtn").onclick=()=>{try{sessionStorage.removeItem("mb-dev")}catch(e){}$("devmsg").textContent="";devShow()};
+$("devlockbtn").onclick=()=>{try{sessionStorage.removeItem("mb-dev")}catch(e){}$("devmsg").textContent="";devShow();devClose()};
 /* Daten, die in jede PDF eingebettet werden (Kundenfassung ohne interne Fotos und ohne KOA) */
 function pdfData(vv){const st={v:1,f:{},Z,M,MG,YN,sch,koaw:vv=="intern"&&$("koaw").checked,sent,sig:{},ph:PHS.filter(x=>vv=="intern"||!x.i).map(x=>({id:x.id,c:x.c,i:x.i,u:x.u}))};
   FIELDS.forEach(k=>st.f[k]=$(k).value);["cm","ck"].forEach(k=>{if(used[k])st.sig[k]=$(k).toDataURL()});return st}
@@ -544,7 +564,7 @@ async function readPdfData(buf){const doc=await PDFLib.PDFDocument.load(buf,{upd
     const bytes=PDFLib.decodePDFRawStream(s).decode();try{const j=JSON.parse(new TextDecoder().decode(bytes));if(j&&j.f&&j.Z)return j}catch(e){}}return null}
 $("devfile").addEventListener("change",async e=>{const f=e.target.files[0],m=$("devmsg");e.target.value="";if(!f)return;m.classList.remove("ok");m.textContent="PDF wird gelesen …";
   try{const st=await readPdfData(await f.arrayBuffer());if(!st){m.textContent="In dieser PDF sind keine Berichtsdaten enthalten (nur PDFs aus der aktuellen App-Version lassen sich laden).";return}
-    await applyState(st);m.classList.add("ok");m.textContent="Bericht "+(st.f.doc||"")+" geladen. Jetzt ändern und neu senden oder herunterladen.";scrollTo(0,0)}
+    await applyState(st);devClose();const g=$("msg");g.classList.add("ok");g.textContent="Bericht "+(st.f.doc||"")+" geladen. Jetzt ändern und neu senden oder herunterladen.";show(false)}
   catch(err){console.error(err);m.textContent="Die PDF konnte nicht gelesen werden."}});
 $("devdl").onclick=()=>{const m=$("devmsg");m.classList.remove("ok");m.textContent="PDFs werden erstellt …";
   (async()=>{try{const a=await makePdf("intern"),b=await makePdf("kunde");let dl=null;try{dl=window.claude&&claude.use?await Promise.race([claude.use("downloads"),new Promise(r=>setTimeout(()=>r(null),3000))]):null}catch(e){}
