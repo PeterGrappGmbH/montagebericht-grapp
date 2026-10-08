@@ -369,7 +369,7 @@ document.addEventListener("click",e=>{const t=e.target;
   const sgb=t.closest("[data-sga]");if(sgb){const i=+sgb.dataset.sgi,x=ART.find(a=>a[0]==sgb.dataset.sga);Object.assign(M[i],{a:x[0],b:x[1],e:x[3],pe:x[5]});drawM();const q=document.querySelector(`[data-m="${i}"][data-f="q"]`);q.focus();q.select()}
   if(t.dataset.sch){sch=t.dataset.sch;document.querySelectorAll("[data-sch]").forEach(b=>{b.classList.toggle("s",b.dataset.sch==sch);b.classList.toggle("nein",b.dataset.sch=="ja"&&sch=="ja")});$("schtx").hidden=sch!="ja";$("r-sch").classList.remove("miss")}
   if(t.dataset.yn){const k=t.dataset.yn;YN[k]=t.dataset.v;document.querySelectorAll(`[data-yn="${k}"]`).forEach(b=>{b.classList.toggle("s",b.dataset.v==YN[k]);b.classList.toggle("nein",b.dataset.v=="nein"&&YN[k]=="nein")});$("r-"+k).classList.remove("miss")}
-  if(t.dataset.ver){if(t.dataset.ver=="intern"&&!devUnlocked())return;ver=t.dataset.ver;document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));render();if(ver=="intern")livePrices().then(()=>{if(ver=="intern")render()})}
+  if(t.dataset.ver){if(t.dataset.ver=="intern"&&!verOk())return;ver=t.dataset.ver;document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));render();if(ver=="intern")livePrices().then(()=>{if(ver=="intern")render()})}
   if(t.dataset.clr){clr($(t.dataset.clr))}
 });
 $("addz").onclick=()=>{Z.push(newZ(Z[Z.length-1]));drawZ();save()};
@@ -520,7 +520,10 @@ const sha=async t=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256
 const devUnlocked=()=>{try{return sessionStorage.getItem("mb-dev")=="1"}catch(e){return false}};
 function devShow(){const u=devUnlocked();$("devlock").hidden=u;$("devtools").hidden=!u;lockSend();syncVer()}
 /* Umschalten auf die interne Fassung (mit Preisen) nur bei entsperrten Entwicklertools */
-function syncVer(){const u=devUnlocked();$("verbar").hidden=!u;if(!u&&ver!="kunde"){ver="kunde";document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));if(!$("v-pdf").hidden)render()}}
+/* In der Claude-Vorschau (nicht auf netlify.app) ist der Umschalter immer da – nur zur Kontrolle */
+const PREVIEW=!/netlify\.app$|elektro-grapp/.test(location.hostname);
+const verOk=()=>PREVIEW||devUnlocked();
+function syncVer(){const u=verOk();$("verbar").hidden=!u;if(!u&&ver!="kunde"){ver="kunde";document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));if(!$("v-pdf").hidden)render()}}
 $("devopen").onclick=()=>{const b=$("devbox");b.hidden=!b.hidden;$("devopen").setAttribute("aria-expanded",!b.hidden);devShow();if(!b.hidden&&!devUnlocked())$("devpw").focus()};
 $("devgo").onclick=async()=>{const m=$("devmsg");let ok=false;try{ok=(await sha($("devpw").value))==DEV_HASH}catch(e){}
   $("devpw").value="";if(ok){try{sessionStorage.setItem("mb-dev","1")}catch(e){}m.classList.add("ok");m.textContent="Entwicklertools entsperrt.";devShow()}else{m.classList.remove("ok");m.textContent="Passwort falsch."}};
