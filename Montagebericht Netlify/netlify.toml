@@ -1,6 +1,9 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+  # Immer bauen, wenn auf den Produktions-Branch (release) gepusht wird.
+  # Netlifys eigene Änderungsprüfung bricht hier wegen des Leerzeichens im Ordnernamen fälschlich ab.
+  ignore = "exit 1"
 
 [functions]
   node_bundler = "esbuild"
