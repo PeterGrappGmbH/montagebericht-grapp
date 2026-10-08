@@ -80,6 +80,7 @@ canvas{width:100%;max-width:100%;height:auto;aspect-ratio:10/3;background:#fff;b
 .sugg button{display:flex;gap:10px;align-items:center;text-align:left;min-height:48px;padding:6px 12px;border:1.5px solid var(--ln);border-radius:8px;background:var(--card);color:var(--tx);font:inherit;font-size:16px;cursor:pointer;min-width:0}
 .sugg button b{min-width:64px;color:var(--mut);font-variant-numeric:tabular-nums;font-weight:600}.sugg button span{display:flex;flex-direction:column;min-width:0}.sugg small{color:var(--mut);font-size:13px}
 .sugg .none{color:var(--mut);font-size:15px;margin:4px 2px}
+.paper .netto{font-size:10px;color:#555;margin:3px 0 0}.paper .gsum{display:flex;justify-content:space-between;gap:12px;margin-top:10px;padding:6px 8px;border-top:2px solid #111;border-bottom:2px solid #111;font-size:13px}
 .paper .pdet{font-size:10px;color:#666;margin-top:1px}
 .hgrow{flex:1 1 200px;min-width:0}
 .newbtn{min-height:48px;padding:0 16px;border-radius:10px;border:2px solid var(--tx);background:var(--card);color:var(--tx);font:700 15px/1 inherit;font-family:inherit;cursor:pointer}
@@ -186,6 +187,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 
 <section>
   <h2>Ausgeführte Arbeiten</h2>
+  <div class="r" id="r-gw"><span>Welche Arbeit wurde erledigt? <b class="req">*</b></span><div class="pills"><button type="button" class="pill" data-gw="el">Elektro</button><button type="button" class="pill" data-gw="sa">Sanitär</button><button type="button" class="pill" data-gw="wp">WP</button><button type="button" class="pill" data-gw="kt">Kältetechnik</button></div></div>
   <textarea id="arb" aria-label="Ausgeführte Arbeiten" placeholder="Was wurde gemacht? Textbausteine unten antippen."></textarea>
   <label class="tg"><input type="checkbox" id="koaw"> KOA erwünscht</label>
   <div class="chips" id="tb"></div>
@@ -332,7 +334,11 @@ const PRICE={"0062653":{"lp":4.7,"cu":0},"0106872":{"lp":588.0,"cu":566.0},"0110
 const brutto=lp=>Math.round(lp*119+1e-6)/100;
 const vk=r=>{const x=PRICE[r.a];if(!x)return null;const pe=x.pe||+r.pe||1;return (brutto(x.lp)+2*(x.cu||0))/pe};
 const qn=v=>parseFloat(String(v||"").replace(",","."))||0;
-let sch="",YN={klein:"",dicht:""},ver="kunde",sent=null,officeSent=null;
+let sch="",GW=[],YN={klein:"",dicht:""},ver="kunde",sent=null,officeSent=null;
+/* Stundensätze (intern): 68 € Elektro/Sanitär, 74 € Kältegeräte und Wärmepumpen */
+const GWN={el:"Elektro",sa:"Sanitär",wp:"WP",kt:"Kältetechnik"};
+const satz=()=>GW.some(k=>k=="wp"||k=="kt")?74:68;
+const lohn=r=>Math.round(hrs(r)*satz()*100)/100;
 const anz=r=>r.an=="Sonstige"?(r.ans||""):r.an;
 const TB=["Funktionsprüfung durchgeführt, i. O.","Arbeiten nach Angebot erledigt","Arbeiten abgeschlossen","Restarbeiten offen","Kunde nicht angetroffen","Material fehlt – Folgetermin nötig"];
 $("tb").innerHTML=TB.map(t=>`<button type="button" class="chip">${esc(t)}</button>`).join("");
@@ -350,9 +356,9 @@ function drawZ(){
   $("zeit").innerHTML=Z.map((r,i)=>`<div class="row"><div class="hd"><span>Monteur ${i+1}</span>${Z.length>1?`<button class="del" type="button" data-dz="${i}">Entfernen</button>`:""}</div>
   <div class="grid"><label>Monteur <b class="req">*</b><select data-z="${i}" data-f="m" id="mo${i}"><option value="">– wählen –</option>${MONT.map(m=>`<option${m==r.m?" selected":""}>${m}</option>`).join("")}</select></label>
   <label>Datum<input type="date" data-z="${i}" data-f="d" value="${r.d}"></label>
-  <label>Beginn<input type="time" data-z="${i}" data-f="v" value="${r.v}"></label>
+  <label>Beginn (inkl. Anfahrt)<input type="time" data-z="${i}" data-f="v" value="${r.v}"></label>
   <label>Ende<input type="time" data-z="${i}" data-f="b" value="${r.b}"></label>
-  <div class="pair"><label class="anz">Anzahl Anfahrten <b class="req">*</b><select data-z="${i}" data-f="an" id="an${i}"><option value="">–</option>${["1","2","3","4","5","6","7","8","9","Sonstige"].map(x=>`<option${x==r.an?" selected":""}>${x}</option>`).join("")}</select>${r.an=="Sonstige"?`<input data-z="${i}" data-f="ans" id="ans${i}" value="${esc(r.ans)}" inputmode="numeric" placeholder="Anzahl">`:""}</label>
+  <div class="pair"><label class="anz">Anzahl Anfahrten <b class="req">*</b><select data-z="${i}" data-f="an" id="an${i}"><option value="">–</option>${["0","1","2","3","4","5","6","7","8","9","Sonstige"].map(x=>`<option${x==r.an?" selected":""}>${x}</option>`).join("")}</select>${r.an=="Sonstige"?`<input data-z="${i}" data-f="ans" id="ans${i}" value="${esc(r.ans)}" inputmode="numeric" placeholder="Anzahl">`:""}</label>
   <label>Anfahrt (km)<input data-z="${i}" data-f="km" value="${r.km}" inputmode="decimal"></label></div></div>
   <div class="hd" style="font-weight:600;color:var(--mut)">Stunden: <span style="color:var(--tx);font-variant-numeric:tabular-nums">${fh(hrs(r))} h</span></div></div>`).join("");
   $("zsum").textContent="Gesamt: "+fh(Z.reduce((s,r)=>s+hrs(r),0))+" Std.";
@@ -385,6 +391,7 @@ document.addEventListener("click",e=>{const t=e.target;
   if(t.dataset.dm!=null){M.splice(+t.dataset.dm,1);drawM()}
   const sgb=t.closest("[data-sga]");if(sgb){const i=+sgb.dataset.sgi,x=ART.find(a=>a[0]==sgb.dataset.sga);Object.assign(M[i],{a:x[0],b:x[1],e:x[3],pe:x[5]});drawM();const q=document.querySelector(`[data-m="${i}"][data-f="q"]`);q.focus();q.select()}
   if(t.dataset.sch){sch=t.dataset.sch;document.querySelectorAll("[data-sch]").forEach(b=>{b.classList.toggle("s",b.dataset.sch==sch);b.classList.toggle("nein",b.dataset.sch=="ja"&&sch=="ja")});$("schtx").hidden=sch!="ja";$("r-sch").classList.remove("miss")}
+  if(t.dataset.gw){const k=t.dataset.gw;GW=GW.includes(k)?GW.filter(x=>x!=k):GW.concat(k);paintPills();$("r-gw").classList.remove("miss")}
   if(t.dataset.yn){const k=t.dataset.yn;YN[k]=t.dataset.v;document.querySelectorAll(`[data-yn="${k}"]`).forEach(b=>{b.classList.toggle("s",b.dataset.v==YN[k]);b.classList.toggle("nein",b.dataset.v=="nein"&&YN[k]=="nein")});$("r-"+k).classList.remove("miss")}
   if(t.dataset.ver){if(t.dataset.ver=="intern"&&!verOk())return;ver=t.dataset.ver;document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));render();if(ver=="intern")livePrices().then(()=>{if(ver=="intern")render()})}
   if(t.dataset.clr){clr($(t.dataset.clr))}
@@ -407,7 +414,7 @@ $("doc").addEventListener("input",e=>{const t=e.target;if(!/^insert/.test(e.inpu
 function check(){const miss=[];const mark=(el,bad,name)=>{el.classList.toggle("miss",bad);if(bad)miss.push([el,name])};
   mark($("doc"),!$("doc").value.trim(),"Dok.-Nr.");mark($("dat"),!$("dat").value,"Datum");
   Z.forEach((r,i)=>{mark($("mo"+i).closest("label"),!r.m,"Monteur "+(i+1));const el=$("an"+i).closest("label");mark(el,!anz(r),"Anzahl Anfahrten (Monteur "+(i+1)+")")});
-  mark($("r-klein"),!YN.klein,"Kleinmaterial");mark($("r-dicht"),!YN.dicht,"Dichtmaterial");mark($("r-sch"),!sch,"Schäden");
+  mark($("r-gw"),!GW.length,"Welche Arbeit wurde erledigt");mark($("r-klein"),!YN.klein,"Kleinmaterial");mark($("r-dicht"),!YN.dicht,"Dichtmaterial");mark($("r-sch"),!sch,"Schäden");
   mark($("sw-cm"),!used.cm,"Unterschrift Monteur");mark($("dcm"),!$("dcm").value,"Datum Unterschrift Monteur");
   const m=$("msg");m.classList.remove("ok");
   if(miss.length){m.textContent="Bitte noch ausfüllen: "+miss.map(x=>x[1]).join(", ");miss[0][0].scrollIntoView({block:"center",behavior:"smooth"});return false}
@@ -453,14 +460,15 @@ function clr(c){c.getContext("2d").clearRect(0,0,c.width,c.height);used[c.id]=0;
 const cl=x=>String(x||"").replace(/[^\wäöüÄÖÜß-]+/g,"-").replace(/-{2,}/g,"-").replace(/^-+|-+$/g,"");
 const fname=vv=>(vv=="intern"?[$("koaw").checked&&"!KOA",cl($("w").value),cl($("doc").value)&&"Dok"+cl($("doc").value),"Montagebericht",$("dat").value,"Intern"]:["Montagebericht",cl($("doc").value),"Kunde"]).filter(Boolean).join("_")+".pdf";
 const dt=s=>{if(!s)return"";const[a,b,c]=s.split("-");return`${c}.${b}.${a.slice(2)}`};
+const NETTO='<p class="netto">Nettopreise, zzgl. 19 % MwSt.</p>';
 function render(){
   const v=id=>esc($(id).value.trim());
   const rech=v("rn")?`<b>${v("rn")}</b>${v("rs")}<br>${v("rp")}`:`<b>${v("obj")}</b>${v("astr")}<br>${v("aplz")}`;
-  const zr=Z.map(r=>`<tr><td>${esc(r.m)}</td><td>${dt(r.d)}</td><td class="num">${esc(r.v)}</td><td class="num">${esc(r.b)}</td><td class="num">${fh(hrs(r))}</td><td class="num">${esc(anz(r))}</td><td class="num">${esc(r.km)}</td>${ver=="intern"?`<td class="num">${eur(fahrt(r))}</td>`:""}</tr>`).join("");
+  const zr=Z.map(r=>`<tr><td>${esc(r.m)}</td><td>${dt(r.d)}</td><td class="num">${esc(r.v)}</td><td class="num">${esc(r.b)}</td><td class="num">${fh(hrs(r))}</td><td class="num">${esc(anz(r))}</td><td class="num">${esc(r.km)}</td>${ver=="intern"?`<td class="num">${eur(lohn(r))}</td><td class="num">${eur(fahrt(r))}</td>`:""}</tr>`).join("");
   const IN=ver=="intern";let tot=0,open=0;
   const pr=(ep,q)=>{if(!IN)return"<td></td>";if(ep==null){open++;return'<td class="num">–</td><td class="num">–</td>'}const g=Math.round(ep*q*100+1e-6)/100;tot+=g;return`<td class="num">${ep.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:4})}</td><td class="num">${eur(g)}</td>`};
   const mr=M.filter(r=>r.b||r.q).map(r=>{const x=PRICE[r.a],ep=vk(r);
-    const det=IN&&x?`<div class="pdet">UVP brutto ${eur(brutto(x.lp))}${x.cu?" + 2 × Zuschlag "+eur(x.cu):""} je ${x.pe||+r.pe||1} ${esc(r.e)}${x.live?"":" (gespeichert)"}</div>`:IN&&r.a?'<div class="pdet">Preis folgt (noch kein Listenpreis)</div>':"";
+    const det="";
     return `<tr><td class="num">${esc(r.q)} ${esc(r.e)}</td><td>${esc(r.b)}${det}</td><td>${esc(r.a)}</td>${pr(ep,qn(r.q))}</tr>`}).join("");
   const yn=k=>YN[k]=="ja"?"Ja":YN[k]=="nein"?"Nein":"";
   const blank=n=>Array(Math.max(0,n)).fill(`<tr><td></td><td></td><td></td><td></td>${IN?"<td></td>":""}</tr>`).join("");const e5=IN?"<td></td>":"";
@@ -475,13 +483,13 @@ function render(){
      <dl class="kv"><dt>Dok.-Nr.</dt><dd>${v("doc")}</dd><dt>Kd.-Nr.</dt><dd>${v("kdnr")||"–"}</dd><dt>Projekt / W-Nr.</dt><dd>${v("w")||"–"}</dd><dt>Best.-/Auftr.-Nr.</dt><dd>${v("bst")||"–"}</dd></dl></div>
    </div>
    <h3 class="t">Montagebericht</h3>
-   <dl class="kv" style="grid-template-columns:120px 1fr 120px 1fr"><dt>Telef.-Nummer</dt><dd>${v("tel")||"–"}</dd><dt>Arbeiten lt. KOA</dt><dd>${v("koa")||"–"}</dd></dl>
+   <dl class="kv" style="grid-template-columns:120px 1fr 120px 1fr"><dt>Telef.-Nummer</dt><dd>${v("tel")||"–"}</dd><dt>Arbeiten lt. KOA</dt><dd>${v("koa")||"–"}</dd><dt>Gewerk</dt><dd>${["el","sa","wp","kt"].filter(k=>GW.includes(k)).map(k=>GWN[k]).join(", ")||"–"}</dd></dl>
    <p class="lbl">Ausgeführte Arbeiten</p><div class="lines">${v("arb")}</div>${ver=="intern"&&$("koaw").checked?'<div class="koa">KOA ERWÜNSCHT – bitte Kostenvoranschlag erstellen</div>':""}
-   <table style="margin-top:12px"><thead><tr><th>Monteur</th><th>Datum</th><th class="num">Beginn</th><th class="num">Ende</th><th class="num">Std.</th><th class="num">Anz. Anfahrten</th><th class="num">Anfahrt (km)</th>${ver=="intern"?'<th class="num">Fahrtkosten €</th>':""}</tr></thead>
-    <tbody>${zr}</tbody><tfoot><tr><td colspan="4">Summe</td><td class="num">${fh(Z.reduce((s,r)=>s+hrs(r),0))}</td><td class="num">${Z.reduce((s,r)=>s+(+anz(r)||0),0)||""}</td><td></td>${ver=="intern"?`<td class="num">${eur(Z.reduce((s,r)=>s+fahrt(r),0))}</td>`:""}</tr></tfoot></table>${ver=="intern"?'<p style="font-size:10px;color:#555;margin:3px 0 0">Fahrtkosten: unter 60 km 45,00 € je Fahrt, über 60 km 45,00 € + 1,80 € je Mehr-km über 60</p>':""}
+   <table style="margin-top:12px"><thead><tr><th>Monteur</th><th>Datum</th><th class="num">Beginn</th><th class="num">Ende</th><th class="num">Std.</th><th class="num">Anz. Anfahrten</th><th class="num">Anfahrt (km)</th>${ver=="intern"?`<th class="num">Lohn € (${satz()} €/Std.)</th><th class="num">Fahrtkosten €</th>`:""}</tr></thead>
+    <tbody>${zr}</tbody><tfoot><tr><td colspan="4">Summe</td><td class="num">${fh(Z.reduce((s,r)=>s+hrs(r),0))}</td><td class="num">${Z.reduce((s,r)=>s+(+anz(r)||0),0)||""}</td><td></td>${ver=="intern"?`<td class="num">${eur(Z.reduce((s,r)=>s+lohn(r),0))}</td><td class="num">${eur(Z.reduce((s,r)=>s+fahrt(r),0))}</td>`:""}</tr></tfoot></table>${ver=="intern"?NETTO:""}
    <p class="lbl">Materialverbrauch</p>
    <table><thead><tr><th style="width:90px">Menge</th><th>Bezeichnung</th><th style="width:110px">Artikel-Nr.</th><th class="num" style="width:90px">E-Preis in €</th>${IN?'<th class="num" style="width:90px">Gesamt €</th>':""}</tr></thead>
-    <tbody>${mr}${blank(3-M.length)}${YN.klein=="ja"?`<tr><td class="num">1 x</td><td>${ck(1)}Kleinmaterial</td><td>KLM</td>${pr(10,1)}</tr>`:""}${YN.dicht=="ja"?`<tr><td class="num">1 x</td><td>${ck(1)}Dichtmaterial</td><td></td>${pr(8,1)}</tr>`:""}${MG.map(k=>`<tr><td class="num">1 x</td><td>${ck(1)}${esc(MGL[k])}</td><td>${k}</td>${pr(qn(MGP[k]),1)}</tr>`).join("")}</tbody>${IN?`<tfoot><tr><td colspan="4">Summe Material und Messgeräte${open?` (${open} Position${open>1?"en":""} ohne Preis)`:""}</td><td class="num">${eur(tot)}</td></tr></tfoot>`:""}</table>${IN?`<p style="font-size:10px;color:#555;margin:3px 0 0">Preis je Einheit = (UVP inkl. MwSt + 2 × Zuschlag) / Preiseinheit · Preisstand Zajadacz ${PSTAND}</p>`:""}
+    <tbody>${mr}${blank(3-M.length)}${YN.klein=="ja"?`<tr><td class="num">1 x</td><td>${ck(1)}Kleinmaterial</td><td>KLM</td>${pr(10,1)}</tr>`:""}${YN.dicht=="ja"?`<tr><td class="num">1 x</td><td>${ck(1)}Dichtmaterial</td><td></td>${pr(8,1)}</tr>`:""}${MG.map(k=>`<tr><td class="num">1 x</td><td>${ck(1)}${esc(MGL[k])}</td><td>${k}</td>${pr(qn(MGP[k]),1)}</tr>`).join("")}</tbody>${IN?`<tfoot><tr><td colspan="4">Summe Material und Messgeräte${open?` (${open} Position${open>1?"en":""} ohne Preis)`:""}</td><td class="num">${eur(tot)}</td></tr></tfoot>`:""}</table>${IN?NETTO+`<div class="gsum"><span>Gesamtsumme Arbeitszeit, Fahrtkosten, Material und Messgeräte</span><b>${eur(Z.reduce((s,r)=>s+lohn(r)+fahrt(r),0)+tot)} €</b></div>`+NETTO:""}
    <div class="ck"><span>${ck(sch=="nein")}Es sind keine Schäden entstanden.</span><span>${ck(sch=="ja")}Es sind folgende Schäden entstanden:</span></div>
    ${sch=="ja"?`<div class="lines" style="min-height:40px">${v("schtx")}</div>`:""}
    <p class="confirm">Die Richtigkeit der oben genannten Arbeitsstunden sowie die ordnungsgemäße Ausführung des Auftrages wird hiermit bestätigt.</p>
@@ -513,22 +521,22 @@ const idb=()=>IDBP||(IDBP=new Promise((ok,no)=>{try{const r=indexedDB.open("mber
 const idbRun=(m,f)=>idb().then(d=>new Promise((ok,no)=>{const t=d.transaction("ph",m),q=f(t.objectStore("ph"));t.oncomplete=()=>ok(q&&q.result);t.onerror=()=>no(t.error)}));
 const idbPut=(k,v)=>idbRun("readwrite",s=>s.put(v,k)).catch(()=>{}),idbGet=k=>idbRun("readonly",s=>s.get(k)).catch(()=>null),idbClear=()=>idbRun("readwrite",s=>s.clear()).catch(()=>{});
 let saveT=null,loading=true;
-function save(){if(loading)return;clearTimeout(saveT);saveT=setTimeout(()=>{const st={f:{},Z,M,MG,YN,sch,koaw:$("koaw").checked,sent,office:officeSent,ph:PHS.map(x=>({id:x.id,c:x.c,i:x.i})),sig:{}};
+function save(){if(loading)return;clearTimeout(saveT);saveT=setTimeout(()=>{const st={f:{},Z,M,MG,YN,GW,sch,koaw:$("koaw").checked,sent,office:officeSent,ph:PHS.map(x=>({id:x.id,c:x.c,i:x.i})),sig:{}};
   FIELDS.forEach(k=>st.f[k]=$(k).value);["cm","ck"].forEach(k=>{if(used[k])st.sig[k]=$(k).toDataURL()});
   try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}},300)}
 document.addEventListener("input",save);document.addEventListener("change",save);document.addEventListener("click",e=>{if(e.target.closest("button"))save()});
 async function load(){let st=null;try{st=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
-  if(st){FIELDS.forEach(k=>{if(st.f&&st.f[k]!=null)$(k).value=st.f[k]});Z=st.Z&&st.Z.length?st.Z:[newZ()];M=st.M&&st.M.length?st.M:[newM()];MG=st.MG||[];YN=st.YN||{klein:"",dicht:""};sch=st.sch||"";$("koaw").checked=!!st.koaw;sent=st.sent||null;officeSent=st.office||null;
+  if(st){FIELDS.forEach(k=>{if(st.f&&st.f[k]!=null)$(k).value=st.f[k]});Z=st.Z&&st.Z.length?st.Z:[newZ()];M=st.M&&st.M.length?st.M:[newM()];MG=st.MG||[];YN=st.YN||{klein:"",dicht:""};GW=st.GW||[];sch=st.sch||"";$("koaw").checked=!!st.koaw;sent=st.sent||null;officeSent=st.office||null;
     for(const [k,u] of Object.entries(st.sig||{})){await new Promise(r=>{const im=new Image();im.onload=()=>{$(k).getContext("2d").drawImage(im,0,0);used[k]=1;r()};im.onerror=r;im.src=u})}
     PHS=[];for(const x of st.ph||[]){const u=await idbGet(x.id);if(u)PHS.push({...x,u})}}
   if(!$("dat").value)$("dat").value=today();if(!$("dcm").value)$("dcm").value=today();
   drawZ();drawM();drawMG();drawPH();paintPills();lockSend();loading=false}
-function paintPills(){document.querySelectorAll("[data-sch]").forEach(b=>{b.classList.toggle("s",b.dataset.sch==sch);b.classList.toggle("nein",b.dataset.sch=="ja"&&sch=="ja")});$("schtx").hidden=sch!="ja";
+function paintPills(){document.querySelectorAll("[data-gw]").forEach(b=>b.classList.toggle("s",GW.includes(b.dataset.gw)));document.querySelectorAll("[data-sch]").forEach(b=>{b.classList.toggle("s",b.dataset.sch==sch);b.classList.toggle("nein",b.dataset.sch=="ja"&&sch=="ja")});$("schtx").hidden=sch!="ja";
   ["klein","dicht"].forEach(k=>document.querySelectorAll(`[data-yn="${k}"]`).forEach(b=>{b.classList.toggle("s",b.dataset.v==YN[k]);b.classList.toggle("nein",b.dataset.v=="nein"&&YN[k]=="nein")}))}
 $("newr").onclick=()=>{$("rsbar").hidden=false;$("rsbar").scrollIntoView({block:"center"})};
 $("rsno").onclick=()=>{$("rsbar").hidden=true};
 $("rsyes").onclick=async()=>{loading=true;try{localStorage.removeItem(KEY)}catch(e){}await idbClear();
-  FIELDS.forEach(k=>$(k).value="");$("koaw").checked=false;Z=[newZ()];M=[newM()];MG=[];YN={klein:"",dicht:""};sch="";sent=null;officeSent=null;PHS=[];$("mq").value="";
+  FIELDS.forEach(k=>$(k).value="");$("koaw").checked=false;Z=[newZ()];M=[newM()];MG=[];YN={klein:"",dicht:""};GW=[];sch="";sent=null;officeSent=null;PHS=[];$("mq").value="";
   ["cm","ck"].forEach(k=>{$(k).getContext("2d").clearRect(0,0,600,180);used[k]=0});document.querySelectorAll(".miss").forEach(x=>x.classList.remove("miss"));$("msg").textContent="";
   $("rsbar").hidden=true;show(false);await load()};
 /* ---------- Entwicklertools: Bericht aus PDF laden und bearbeiten (Passwort) ---------- */
@@ -550,10 +558,10 @@ $("devgo").onclick=async()=>{let ok=false;try{ok=(await sha($("devpw").value.nor
 $("devpw").addEventListener("keydown",e=>{if(e.key=="Enter")$("devgo").click()});
 $("devlockbtn").onclick=()=>{try{sessionStorage.removeItem("mb-dev")}catch(e){}$("devmsg").textContent="";devShow();devClose()};
 /* Daten, die in jede PDF eingebettet werden (Kundenfassung ohne interne Fotos und ohne KOA) */
-function pdfData(vv){const st={v:1,f:{},Z,M,MG,YN,sch,koaw:vv=="intern"&&$("koaw").checked,sent,sig:{},ph:PHS.filter(x=>vv=="intern"||!x.i).map(x=>({id:x.id,c:x.c,i:x.i,u:x.u}))};
+function pdfData(vv){const st={v:1,f:{},Z,M,MG,YN,GW,sch,koaw:vv=="intern"&&$("koaw").checked,sent,sig:{},ph:PHS.filter(x=>vv=="intern"||!x.i).map(x=>({id:x.id,c:x.c,i:x.i,u:x.u}))};
   FIELDS.forEach(k=>st.f[k]=$(k).value);["cm","ck"].forEach(k=>{if(used[k])st.sig[k]=$(k).toDataURL()});return st}
 async function applyState(st){loading=true;FIELDS.forEach(k=>$(k).value=st.f&&st.f[k]!=null?st.f[k]:"");
-  Z=st.Z&&st.Z.length?st.Z:[newZ()];M=st.M&&st.M.length?st.M:[newM()];MG=st.MG||[];YN=st.YN||{klein:"",dicht:""};sch=st.sch||"";$("koaw").checked=!!st.koaw;sent=st.sent||null;officeSent=null;
+  Z=st.Z&&st.Z.length?st.Z:[newZ()];M=st.M&&st.M.length?st.M:[newM()];MG=st.MG||[];YN=st.YN||{klein:"",dicht:""};GW=st.GW||[];sch=st.sch||"";$("koaw").checked=!!st.koaw;sent=st.sent||null;officeSent=null;
   ["cm","ck"].forEach(k=>{$(k).getContext("2d").clearRect(0,0,600,180);used[k]=0});
   for(const [k,u] of Object.entries(st.sig||{})){await new Promise(r=>{const im=new Image();im.onload=()=>{$(k).getContext("2d").drawImage(im,0,0);used[k]=1;r()};im.onerror=r;im.src=u})}
   await idbClear();PHS=(st.ph||[]).map(x=>({id:x.id,c:x.c||"",i:!!x.i,u:x.u}));
