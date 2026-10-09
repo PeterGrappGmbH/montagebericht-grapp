@@ -321,7 +321,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const MONT=["Y. Cönt", "J. Grapp", "J. Hallemann", "M. Hermoneit", "G. Janiec", "R. Kapalka", "R. Krüger", "F. Lambeck", "M. Landies", "R. Mandziuk", "M. Napierala", "J. Neumann", "M.-A. Palm", "J. Reimer", "S. Reinecke", "P. Rentis", "T. Schultze", "M. Schwandt", "K. Trebaczkiewicz", "J. Wesche", "K. Wilke", "K. Zerbock", "Sonstiges"]; // Monteure hier ergänzen
+const MONT=["Y. Cönt", "J. Grapp", "J. Hallemann", "M. Hermoneit", "G. Janiec", "R. Kapalka", "R. Krüger", "F. Lambeck", "M. Landies", "R. Mandziuk", "M. Napierala", "J. Neumann", "M. Palm", "J. Reimer", "S. Reinecke", "P. Rentis", "T. Schultze", "M. Schwandt", "K. Trebaczkiewicz", "J. Wesche", "K. Wilke", "K. Zerbock", "Sonstiges"]; // Monteure hier ergänzen
 const today=()=>{const t=new Date();return new Date(t-t.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 let GW=[];
 const newZ=(l={})=>({m:"",art:GW.length==1?GW[0]:"",d:l.d||today(),v:l.v||"",b:l.b||"",an:"",ans:"",km:""});
