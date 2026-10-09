@@ -49,6 +49,10 @@ details.opt{margin:8px 0 2px}details.opt>summary{cursor:pointer;font-weight:700;
 .sig{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .sig>div{display:flex;flex-direction:column;gap:6px;min-width:0}
 canvas{width:100%;max-width:100%;height:auto;aspect-ratio:10/3;background:#fff;border:1.5px dashed var(--ln);border-radius:8px;touch-action:none}
+/* Unterschriftsfeld gesperrt (wie Wartungsprotokolle): Scrollen geht, Zeichnen nicht */
+canvas.lk{touch-action:pan-y;opacity:.8}
+.sgl{display:block;margin:4px 0 8px;padding:10px 14px;border-radius:10px;border:2px solid var(--tx);background:var(--card);color:var(--tx);font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.sgl.on{background:var(--tx);color:var(--bg)}
 .sig .lab{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:15px}
 .note{font-size:14px;color:var(--mut);margin:6px 0}
 .act{display:flex;gap:8px;margin-top:6px}
@@ -230,9 +234,9 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   <h2>Abschluss</h2>
   <p class="note">Die Richtigkeit der oben genannten Arbeitsstunden sowie die ordnungsgemäße Ausführung des Auftrages wird hiermit bestätigt.</p>
   <div class="sig">
-    <div id="sw-cm"><div class="lab"><span>Unterschrift Monteur <b class="req">*</b></span><button class="del" type="button" data-clr="cm">Löschen</button></div><canvas id="cm" width="600" height="180" aria-label="Unterschrift Monteur"></canvas>
+    <div id="sw-cm"><div class="lab"><span>Unterschrift Monteur <b class="req">*</b></span><button class="del" type="button" data-clr="cm">Löschen</button></div><button type="button" class="sgl" data-sgl="cm">Zum Unterschreiben entsperren</button><canvas id="cm" class="lk" width="600" height="180" aria-label="Unterschrift Monteur"></canvas>
       <label class="sd">Datum der Unterschrift <b class="req">*</b><input id="dcm" type="date"></label></div>
-    <div><div class="lab"><span>Unterschrift Kunde <small class="fhint" style="display:inline">optional</small></span><button class="del" type="button" data-clr="ck">Löschen</button></div><canvas id="ck" width="600" height="180" aria-label="Unterschrift Kunde"></canvas>
+    <div><div class="lab"><span>Unterschrift Kunde <small class="fhint" style="display:inline">optional</small></span><button class="del" type="button" data-clr="ck">Löschen</button></div><button type="button" class="sgl" data-sgl="ck">Zum Unterschreiben entsperren</button><canvas id="ck" class="lk" width="600" height="180" aria-label="Unterschrift Kunde"></canvas>
       <input id="kname" placeholder="Name Kunde in Druckschrift">
       <label class="sd">Datum der Unterschrift<input id="dck" type="date"></label></div>
   </div>
@@ -397,6 +401,7 @@ document.addEventListener("click",e=>{const t=e.target;
   if(t.dataset.gw){const k=t.dataset.gw;GW=GW.includes(k)?GW.filter(x=>x!=k):GW.concat(k);paintPills();$("r-gw").classList.remove("miss")}
   if(t.dataset.yn){const k=t.dataset.yn;YN[k]=t.dataset.v;document.querySelectorAll(`[data-yn="${k}"]`).forEach(b=>{b.classList.toggle("s",b.dataset.v==YN[k]);b.classList.toggle("nein",b.dataset.v=="nein"&&YN[k]=="nein")});$("r-"+k).classList.remove("miss")}
   if(t.dataset.ver){if(t.dataset.ver=="intern"&&!verOk())return;ver=t.dataset.ver;document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));render();if(ver=="intern")livePrices().then(()=>{if(ver=="intern")render()})}
+  if(t.dataset.sgl){const c=$(t.dataset.sgl),on=!c.classList.contains("lk");c.classList.toggle("lk",on);t.classList.toggle("on",!on);t.textContent=on?"Zum Unterschreiben entsperren":"Unterschrift sperren"}
   if(t.dataset.clr){clr($(t.dataset.clr))}
 });
 $("addz").onclick=()=>{Z.push(newZ(Z[Z.length-1]));drawZ();save()};
@@ -453,7 +458,7 @@ $("fotos").addEventListener("click",e=>{const b=e.target.closest("button");if(!b
 const used={};
 function pad(c){const x=c.getContext("2d");x.lineWidth=3;x.lineCap="round";x.lineJoin="round";x.strokeStyle="#111";let dn=false;
   const pt=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]};
-  c.addEventListener("pointerdown",e=>{dn=true;c.setPointerCapture(e.pointerId);const[a,b]=pt(e);x.beginPath();x.moveTo(a,b)});
+  c.addEventListener("pointerdown",e=>{if(c.classList.contains("lk"))return;dn=true;c.setPointerCapture(e.pointerId);const[a,b]=pt(e);x.beginPath();x.moveTo(a,b)});
   c.addEventListener("pointermove",e=>{if(!dn)return;const[a,b]=pt(e);x.lineTo(a,b);x.stroke();used[c.id]=1});
   c.addEventListener("pointerup",()=>{if(dn){dn=false;/* Datum der Unterschrift beim Unterschreiben automatisch setzen */const d=$(c.id=="ck"?"dck":"dcm");if(d&&!d.value)d.value=today();save()}});c.addEventListener("pointercancel",()=>dn=false)}
 function clr(c){c.getContext("2d").clearRect(0,0,c.width,c.height);used[c.id]=0;save()}
@@ -541,6 +546,7 @@ $("rsno").onclick=()=>{$("rsbar").hidden=true};
 $("rsyes").onclick=async()=>{loading=true;try{localStorage.removeItem(KEY)}catch(e){}await idbClear();
   FIELDS.forEach(k=>$(k).value="");$("koaw").checked=false;Z=[newZ()];M=[newM()];MG=[];YN={klein:"",dicht:""};GW=[];sch="";sent=null;officeSent=null;PHS=[];$("mq").value="";
   ["cm","ck"].forEach(k=>{$(k).getContext("2d").clearRect(0,0,600,180);used[k]=0});document.querySelectorAll(".miss").forEach(x=>x.classList.remove("miss"));$("msg").textContent="";
+  document.querySelectorAll("[data-sgl]").forEach(b=>{$(b.dataset.sgl).classList.add("lk");b.classList.remove("on");b.textContent="Zum Unterschreiben entsperren"});
   $("rsbar").hidden=true;show(false);await load()};
 /* ---------- Entwicklertools: Bericht aus PDF laden und bearbeiten (Passwort) ---------- */
 const DEV_HASH="0192b8fa2928a2d55e39f562a637819fadeb9b8b9eb661092bb0eeedef9dbb25";
