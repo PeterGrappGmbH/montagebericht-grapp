@@ -27,6 +27,16 @@ textarea{min-height:120px;resize:vertical}
 label.r input,label.r select{flex:1 1 50%;max-width:55%}
 input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--ac);outline-offset:1px}
 .req{color:var(--bad)}
+/* Monteur-Zeile: Raster, Beschriftung einzeilig mit Stern daneben, alle Felder auf einer Höhe */
+.grid.zg{grid-template-columns:repeat(12,1fr);align-items:end}
+.zg>label{justify-content:flex-end}
+.zg .c4{grid-column:span 4}.zg .c3{grid-column:span 3}
+.lt{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zg input,.zg select{height:46px;min-height:46px;box-sizing:border-box}
+@media (max-width:600px){.grid.zg{grid-template-columns:1fr 1fr}.zg .c4,.zg .c3{grid-column:span 1}}
+.sig>div{display:flex;flex-direction:column;gap:8px}
+.sig .sd input{height:46px;box-sizing:border-box}
+
 .fhint{display:block;font-size:13px;font-weight:400;color:var(--mut);margin-top:2px}
 .info{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-left:6px;padding:0;border-radius:50%;border:2px solid var(--mut);background:var(--card);color:var(--mut);font:italic 800 14px Georgia,serif;vertical-align:middle;cursor:pointer}
 .infobox{margin:0 0 8px;padding:10px 12px;border-left:4px solid var(--ac);background:var(--in);border-radius:6px;font-size:15px}
@@ -245,10 +255,10 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   <p class="note">Die Richtigkeit der oben genannten Arbeitsstunden sowie die ordnungsgemäße Ausführung des Auftrages wird hiermit bestätigt.</p>
   <div class="sig">
     <div id="sw-cm"><div class="lab"><span>Unterschrift Monteur <b class="req">*</b></span><button class="del" type="button" data-clr="cm">Löschen</button></div><button type="button" class="sgl" data-sgl="cm">Zum Unterschreiben entsperren</button><canvas id="cm" class="lk" width="600" height="180" aria-label="Unterschrift Monteur"></canvas>
-      <label class="sd">Datum der Unterschrift <b class="req">*</b><input id="dcm" type="date"></label></div>
+      <label class="sd"><span class="lt">Datum der Unterschrift <b class="req">*</b></span><input id="dcm" type="date"></label></div>
     <div><div class="lab"><span>Unterschrift Kunde <small class="fhint" style="display:inline">optional</small></span><button class="del" type="button" data-clr="ck">Löschen</button></div><button type="button" class="sgl" data-sgl="ck">Zum Unterschreiben entsperren</button><canvas id="ck" class="lk" width="600" height="180" aria-label="Unterschrift Kunde"></canvas>
-      <input id="kname" placeholder="Name Kunde in Druckschrift">
-      <label class="sd">Datum der Unterschrift<input id="dck" type="date"></label></div>
+      <label class="sd"><span class="lt">Datum der Unterschrift</span><input id="dck" type="date"></label>
+      <label class="sd"><span class="lt">Name Kunde in Druckschrift</span><input id="kname" placeholder="z. B. M. Mustermann"></label></div>
   </div>
   <label class="r"><span>E-Mail Kunde<small class="fhint">nur nötig, wenn der Kunde eine Kopie bekommt</small></span><input id="kmail" type="email" inputmode="email" placeholder="z. B. kunde@beispiel.de"></label>
   <p class="msg" id="msg" role="status"></p>
@@ -371,13 +381,13 @@ const eur=x=>x.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDi
 const fahrt=r=>{const n=+anz(r)||0,km=parseFloat(String(r.km).replace(",","."))||0;return n*(km<=60?45:45+1.8*(km-60))};
 function drawZ(){
   $("zeit").innerHTML=Z.map((r,i)=>`<div class="row"><div class="hd"><span>Monteur ${i+1}</span>${Z.length>1?`<button class="del" type="button" data-dz="${i}">Entfernen</button>`:""}</div>
-  <div class="grid"><label>Monteur <b class="req">*</b><select data-z="${i}" data-f="m" id="mo${i}"><option value="">– wählen –</option>${MONT.map(m=>`<option${m==r.m?" selected":""}>${m}</option>`).join("")}</select></label>
-  <label>Arbeitsart <b class="req">*</b><select data-z="${i}" data-f="art" id="aa${i}"><option value="">– wählen –</option>${["el","sa","wp","kt"].map(k=>`<option value="${k}"${k==r.art?" selected":""}>${GWN[k]}</option>`).join("")}</select></label>
-  <label>Datum<input type="date" data-z="${i}" data-f="d" value="${r.d}"></label>
-  <label>Beginn (inkl. Anfahrt)<input type="time" data-z="${i}" data-f="v" value="${r.v}"></label>
-  <label>Ende<input type="time" data-z="${i}" data-f="b" value="${r.b}"></label>
-  <div class="pair"><label class="anz">Anzahl Anfahrten <b class="req">*</b><select data-z="${i}" data-f="an" id="an${i}"><option value="">–</option>${["0","1","2","3","4","5","6","7","8","9","Sonstige"].map(x=>`<option${x==r.an?" selected":""}>${x}</option>`).join("")}</select>${r.an=="Sonstige"?`<input data-z="${i}" data-f="ans" id="ans${i}" value="${esc(r.ans)}" inputmode="numeric" placeholder="Anzahl">`:""}</label>
-  <label>Anfahrt (km)<input data-z="${i}" data-f="km" value="${r.km}" inputmode="decimal"></label></div></div>
+  <div class="grid zg"><label class="c4"><span class="lt">Monteur <b class="req">*</b></span><select data-z="${i}" data-f="m" id="mo${i}"><option value="">– wählen –</option>${MONT.map(m=>`<option${m==r.m?" selected":""}>${m}</option>`).join("")}</select></label>
+  <label class="c4"><span class="lt">Arbeitsart <b class="req">*</b></span><select data-z="${i}" data-f="art" id="aa${i}"><option value="">– wählen –</option>${["el","sa","wp","kt"].map(k=>`<option value="${k}"${k==r.art?" selected":""}>${GWN[k]}</option>`).join("")}</select></label>
+  <label class="c4"><span class="lt">Datum</span><input type="date" data-z="${i}" data-f="d" value="${r.d}"></label>
+  <label class="c3"><span class="lt">Beginn (inkl. Anfahrt)</span><input type="time" data-z="${i}" data-f="v" value="${r.v}"></label>
+  <label class="c3"><span class="lt">Ende</span><input type="time" data-z="${i}" data-f="b" value="${r.b}"></label>
+  <label class="c3 anz"><span class="lt">Anzahl Anfahrten <b class="req">*</b></span><select data-z="${i}" data-f="an" id="an${i}"><option value="">–</option>${["0","1","2","3","4","5","6","7","8","9","Sonstige"].map(x=>`<option${x==r.an?" selected":""}>${x}</option>`).join("")}</select>${r.an=="Sonstige"?`<input data-z="${i}" data-f="ans" id="ans${i}" value="${esc(r.ans)}" inputmode="numeric" placeholder="Anzahl">`:""}</label>
+  <label class="c3"><span class="lt">Anfahrt (km)</span><input data-z="${i}" data-f="km" value="${r.km}" inputmode="decimal"></label></div>
   <div class="hd" style="font-weight:600;color:var(--mut)">Stunden: <span style="color:var(--tx);font-variant-numeric:tabular-nums">${fh(hrs(r))} h</span></div></div>`).join("");
   $("zsum").textContent="Gesamt: "+fh(Z.reduce((s,r)=>s+hrs(r),0))+" Std.";
 }
