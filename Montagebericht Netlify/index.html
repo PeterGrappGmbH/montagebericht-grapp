@@ -27,6 +27,7 @@ textarea{min-height:120px;resize:vertical}
 label.r input,label.r select{flex:1 1 50%;max-width:55%}
 input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--ac);outline-offset:1px}
 .req{color:var(--bad)}
+.del:disabled{opacity:.35;cursor:not-allowed;text-decoration:none}
 /* Monteur-Zeile: Raster, Beschriftung einzeilig mit Stern daneben, alle Felder auf einer Höhe */
 .grid.zg{grid-template-columns:repeat(12,1fr);align-items:end}
 .zg>label{justify-content:flex-end}
@@ -254,9 +255,9 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   <h2>Abschluss</h2>
   <p class="note">Die Richtigkeit der oben genannten Arbeitsstunden sowie die ordnungsgemäße Ausführung des Auftrages wird hiermit bestätigt.</p>
   <div class="sig">
-    <div id="sw-cm"><div class="lab"><span>Unterschrift Monteur <b class="req">*</b></span><button class="del" type="button" data-clr="cm">Löschen</button></div><button type="button" class="sgl" data-sgl="cm">Zum Unterschreiben entsperren</button><canvas id="cm" class="lk" width="600" height="180" aria-label="Unterschrift Monteur"></canvas>
+    <div id="sw-cm"><div class="lab"><span>Unterschrift Monteur <b class="req">*</b></span><button class="del" type="button" data-clr="cm" disabled>Löschen</button></div><button type="button" class="sgl" data-sgl="cm">Zum Unterschreiben entsperren</button><canvas id="cm" class="lk" width="600" height="180" aria-label="Unterschrift Monteur"></canvas>
       <label class="sd"><span class="lt">Datum der Unterschrift <b class="req">*</b></span><input id="dcm" type="date"></label></div>
-    <div><div class="lab"><span>Unterschrift Kunde <small class="fhint" style="display:inline">optional</small></span><button class="del" type="button" data-clr="ck">Löschen</button></div><button type="button" class="sgl" data-sgl="ck">Zum Unterschreiben entsperren</button><canvas id="ck" class="lk" width="600" height="180" aria-label="Unterschrift Kunde"></canvas>
+    <div><div class="lab"><span>Unterschrift Kunde <small class="fhint" style="display:inline">optional</small></span><button class="del" type="button" data-clr="ck" disabled>Löschen</button></div><button type="button" class="sgl" data-sgl="ck">Zum Unterschreiben entsperren</button><canvas id="ck" class="lk" width="600" height="180" aria-label="Unterschrift Kunde"></canvas>
       <label class="sd"><span class="lt">Datum der Unterschrift</span><input id="dck" type="date"></label>
       <label class="sd"><span class="lt">Name Kunde in Druckschrift</span><input id="kname" placeholder="z. B. M. Mustermann"></label></div>
   </div>
@@ -422,8 +423,8 @@ document.addEventListener("click",e=>{const t=e.target;
   if(t.dataset.gw){const k=t.dataset.gw;GW=GW.includes(k)?GW.filter(x=>x!=k):GW.concat(k);paintPills();$("r-gw").classList.remove("miss")}
   if(t.dataset.yn){const k=t.dataset.yn;YN[k]=t.dataset.v;document.querySelectorAll(`[data-yn="${k}"]`).forEach(b=>{b.classList.toggle("s",b.dataset.v==YN[k]);b.classList.toggle("nein",b.dataset.v=="nein"&&YN[k]=="nein")});$("r-"+k).classList.remove("miss")}
   if(t.dataset.ver){if(t.dataset.ver=="intern"&&!verOk())return;ver=t.dataset.ver;document.querySelectorAll("[data-ver]").forEach(b=>b.classList.toggle("s",b.dataset.ver==ver));render();if(ver=="intern")livePrices().then(()=>{if(ver=="intern")render()})}
-  if(t.dataset.sgl){const c=$(t.dataset.sgl),on=!c.classList.contains("lk");c.classList.toggle("lk",on);t.classList.toggle("on",!on);t.textContent=on?"Zum Unterschreiben entsperren":"Unterschrift sperren"}
-  if(t.dataset.clr){clr($(t.dataset.clr))}
+  if(t.dataset.sgl){const c=$(t.dataset.sgl),on=!c.classList.contains("lk");c.classList.toggle("lk",on);t.classList.toggle("on",!on);{const cb=document.querySelector(`[data-clr="${t.dataset.sgl}"]`);if(cb)cb.disabled=on}t.textContent=on?"Zum Unterschreiben entsperren":"Unterschrift sperren"}
+  if(t.dataset.clr){if($(t.dataset.clr).classList.contains("lk"))return;clr($(t.dataset.clr))}
 });
 $("addz").onclick=()=>{Z.push(newZ(Z[Z.length-1]));drawZ();save()};
 $("addm").onclick=()=>{M.push(newM());drawM();save()};
@@ -567,7 +568,7 @@ $("rsno").onclick=()=>{$("rsbar").hidden=true};
 $("rsyes").onclick=async()=>{loading=true;try{localStorage.removeItem(KEY)}catch(e){}await idbClear();
   FIELDS.forEach(k=>$(k).value="");$("koaw").checked=false;Z=[newZ()];M=[newM()];MG=[];YN={klein:"",dicht:""};GW=[];sch="";sent=null;officeSent=null;PHS=[];$("mq").value="";
   ["cm","ck"].forEach(k=>{$(k).getContext("2d").clearRect(0,0,600,180);used[k]=0});document.querySelectorAll(".miss").forEach(x=>x.classList.remove("miss"));$("msg").textContent="";
-  document.querySelectorAll("[data-sgl]").forEach(b=>{$(b.dataset.sgl).classList.add("lk");b.classList.remove("on");b.textContent="Zum Unterschreiben entsperren"});
+  document.querySelectorAll("[data-sgl]").forEach(b=>{$(b.dataset.sgl).classList.add("lk");const cb=document.querySelector(`[data-clr="${b.dataset.sgl}"]`);if(cb)cb.disabled=true;b.classList.remove("on");b.textContent="Zum Unterschreiben entsperren"});
   $("rsbar").hidden=true;show(false);await load()};
 /* ---------- Entwicklertools: Bericht aus PDF laden und bearbeiten (Passwort) ---------- */
 const DEV_HASH="0192b8fa2928a2d55e39f562a637819fadeb9b8b9eb661092bb0eeedef9dbb25";
