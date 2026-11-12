@@ -10,8 +10,10 @@
 //   MAIL_FROM       optional, Absender (Standard: SMTP_USER)
 //   SMTP_HOST       optional, Standard smtp.ionos.de
 //   SMTP_PORT       optional, Standard 587 (STARTTLS); 465 = SSL
-//   ALLOWED_ORIGIN  optional, z. B. https://montageberichte.netlify.app (Komma für mehrere)
+//   ALLOWED_ORIGIN  optional, z. B. https://montageberichte.elektro-grapp.de (Komma für mehrere)
+//   ACCESS_CODE     optional, Zugangscode. Ist er gesetzt, zeigt die Adresse erst eine Code-Eingabe und nur freigeschaltete Geräte können senden.
 import nodemailer from "nodemailer";
+import { freigeschaltet } from "../lib/zugang.mjs";
 
 const json = (o, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json" } });
@@ -24,6 +26,7 @@ export default async (req) => {
   const allowed = (process.env.ALLOWED_ORIGIN || "").split(",").map(clean).filter(Boolean);
   const origin = clean(req.headers.get("origin"));
   if (allowed.length && origin && !allowed.includes(origin)) return json({ error: "forbidden" }, 403);
+  if (!freigeschaltet(req)) return json({ error: "no_access" }, 401);
 
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.MAIL_TO)
     return json({ error: "not_configured" }, 500);

@@ -9,6 +9,7 @@
 //
 // Umgebungsvariablen: OMD_TOKEN_URL, OMD_BASE_URL, OMD_CLIENT_ID, OMD_USER, OMD_PASS, optional OMD_CUSTOMER,
 //                     optional SHOP_URL (Standard https://www.zajadacz.de), ALLOWED_ORIGIN
+import { freigeschaltet } from "../lib/zugang.mjs";
 
 const json = (o, status = 200, cache = "no-store") =>
   new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": cache } });
@@ -94,6 +95,7 @@ export default async (req) => {
   const allowed = (process.env.ALLOWED_ORIGIN || "").split(",").map(clean).filter(Boolean);
   const origin = clean(req.headers.get("origin"));
   if (allowed.length && origin && !allowed.includes(origin)) return json({ error: "forbidden" }, 403);
+  if (!freigeschaltet(req)) return json({ error: "no_access" }, 401);
 
   const E = process.env;
   if (!["OMD_TOKEN_URL", "OMD_BASE_URL", "OMD_CLIENT_ID", "OMD_USER", "OMD_PASS"].every((k) => E[k])) return json({ error: "not_configured" }, 500);
