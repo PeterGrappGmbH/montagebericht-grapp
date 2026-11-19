@@ -720,7 +720,21 @@ const NEWS={id:"2026-11-11",t:"Neu im Montagebericht",l:[
   o.innerHTML='<div class="rsbox" role="alertdialog" aria-modal="true"><h3>'+esc(NEWS.t)+'</h3><ul>'+NEWS.l.map(x=>"<li>"+esc(x)+"</li>").join("")+'</ul><button type="button" class="big dk" id="newsOk">Verstanden</button></div>';
   document.body.appendChild(o);$("newsOk").onclick=()=>{try{localStorage.setItem("mb_news",NEWS.id)}catch(e){}o.remove()}})();
 
-syncVer();load();
+/* ---------- Übernahme aus dem Termin-Portal (?doc=…&obj=…&mon=…) ----------
+   Das Portal öffnet die App mit den Auftragsdaten in der Adresse. Gleicher Auftrag: Entwurf bleibt.
+   Anderer Auftrag: Rückfrage, dann neuer Bericht mit den übergebenen Feldern und Monteuren. */
+async function ausTermin(){const q=new URLSearchParams(location.search);if(!q.has("doc")&&!q.has("obj"))return;
+  history.replaceState(null,"",location.pathname);
+  const doc=(q.get("doc")||"").trim();if(doc&&$("doc").value.trim()==doc)return;
+  const leer=!FIELDS.some(k=>!["dat","dcm"].includes(k)&&$(k).value.trim())&&!Z.some(z=>z.m);
+  if(!leer&&!confirm(`Neuen Bericht für Auftrag ${doc||q.get("obj")} anlegen?\n\nDer angefangene Bericht${$("doc").value.trim()?" ("+$("doc").value.trim()+")":""} wird dabei verworfen.`))return;
+  const f={};FIELDS.forEach(k=>f[k]="");["doc","w","koa","bst","obj","astr","aplz","tel","rn"].forEach(k=>{const v=(q.get(k)||"").trim();if(v)f[k]=v});
+  f.dat=today();f.dcm=today();
+  const nachname=m=>m.replace(/^\S+\s+/,"").toLowerCase();
+  const mon=(q.get("mon")||"").split(",").map(n=>n.trim().toLowerCase()).filter(Boolean)
+    .map(n=>MONT.find(m=>m!="Sonstiges"&&n.split(/[\s,()]+/).includes(nachname(m)))||"");
+  await applyState({f,Z:(mon.length?mon:[""]).map(m=>({...newZ(),m})),M:[newM()]});show(false)}
+syncVer();load().then(ausTermin);
 </script>
 
 </body></html>

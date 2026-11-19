@@ -28,7 +28,7 @@ h1{font-size:20px;margin:0 0 6px}p{margin:0 0 16px;opacity:.75;font-size:15px}
 input{width:100%;box-sizing:border-box;font:inherit;padding:12px;border:2px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--tx)}
 button{margin-top:12px;width:100%;font:inherit;font-weight:700;padding:13px;border:0;border-radius:10px;background:var(--ac);color:var(--ac2)}
 .e{color:var(--er);margin:10px 0 0;font-size:15px;opacity:1}</style></head><body>
-<form method="post" action="/"><h1>Montageberichte</h1><p>Bitte Zugangscode eingeben.</p>
+<form method="post"><h1>Montageberichte</h1><p>Bitte Zugangscode eingeben.</p>
 <input type="password" name="code" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus aria-label="Zugangscode">
 <button type="submit">Öffnen</button>${msg ? `<p class="e">${msg}</p>` : ""}</form></body></html>`, {
   status: msg ? 401 : 200,
@@ -45,7 +45,7 @@ export default async (req, context) => {
     try { given = String((await req.formData()).get("code") || ""); } catch (e) {}
     if (given && same(await token(given), want)) {
       return new Response(null, { status: 303, headers: {
-        Location: "/",
+        Location: new URL(req.url).pathname + new URL(req.url).search, // Auftragsdaten in der Adresse bleiben erhalten
         "Set-Cookie": `${COOKIE}=${want}; Path=/; Max-Age=31536000; Secure; HttpOnly; SameSite=Lax`,
         "Cache-Control": "no-store"
       } });
