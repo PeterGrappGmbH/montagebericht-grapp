@@ -16,9 +16,9 @@
 //   Zajadacz:          OMD_TOKEN_URL, OMD_BASE_URL, OMD_CLIENT_ID, OMD_USER, OMD_PASS, optional OMD_CUSTOMER,
 //                      optional SHOP_URL (Standard https://www.zajadacz.de)
 //   Wiedemann:         WIE_USER, WIE_PASS, WIE_CLIENT_ID (von Wiedemann; ohne wird OMD_CLIENT_ID versucht → invalid_client),
-//                      optional WIE_CLIENT_SECRET, WIE_CUSTOMER,
+//                      optional WIE_SCOPE (Standard openMasterdata), WIE_CLIENT_SECRET, WIE_CUSTOMER,
 //                      WIE_BASE_URL / WIE_TOKEN_URL (Standard: Adressen aus der Wiedemann-Mail)
-//   Bär & Ollenroth:   BO_BASE_URL, BO_TOKEN_URL, BO_USER, BO_PASS, optional BO_CUSTOMER, BO_CLIENT_ID, BO_CLIENT_SECRET
+//   Bär & Ollenroth:   BO_BASE_URL, BO_TOKEN_URL, BO_USER, BO_PASS, optional BO_CUSTOMER, BO_CLIENT_ID, BO_CLIENT_SECRET, BO_SCOPE
 //   allgemein:         ALLOWED_ORIGIN
 import { freigeschaltet } from "../lib/zugang.mjs";
 
@@ -35,9 +35,9 @@ const C = globalThis.__mbPreise2 || (globalThis.__mbPreise2 = { token: {}, kupfe
 const WIE_URL = "https://shop.wiedemann.de/openmasterdata(bD1kZSZjPTEwMA==)";
 function haendler(h, E) {
   const cfg = {
-    zaj: { base: E.OMD_BASE_URL, auth: E.OMD_TOKEN_URL, client: E.OMD_CLIENT_ID, user: E.OMD_USER, pass: E.OMD_PASS, kunde: E.OMD_CUSTOMER },
-    wie: { base: E.WIE_BASE_URL || WIE_URL, auth: E.WIE_TOKEN_URL || WIE_URL + "/auth", client: E.WIE_CLIENT_ID || E.OMD_CLIENT_ID, secret: E.WIE_CLIENT_SECRET, user: E.WIE_USER, pass: E.WIE_PASS, kunde: E.WIE_CUSTOMER },
-    bo: { base: E.BO_BASE_URL, auth: E.BO_TOKEN_URL, client: E.BO_CLIENT_ID || E.OMD_CLIENT_ID, secret: E.BO_CLIENT_SECRET, user: E.BO_USER, pass: E.BO_PASS, kunde: E.BO_CUSTOMER },
+    zaj: { base: E.OMD_BASE_URL, auth: E.OMD_TOKEN_URL, client: E.OMD_CLIENT_ID, scope: E.OMD_SCOPE, user: E.OMD_USER, pass: E.OMD_PASS, kunde: E.OMD_CUSTOMER },
+    wie: { base: E.WIE_BASE_URL || WIE_URL, auth: E.WIE_TOKEN_URL || WIE_URL + "/auth", client: E.WIE_CLIENT_ID || E.OMD_CLIENT_ID, secret: E.WIE_CLIENT_SECRET, scope: E.WIE_SCOPE || "openMasterdata", user: E.WIE_USER, pass: E.WIE_PASS, kunde: E.WIE_CUSTOMER },
+    bo: { base: E.BO_BASE_URL, auth: E.BO_TOKEN_URL, client: E.BO_CLIENT_ID || E.OMD_CLIENT_ID, secret: E.BO_CLIENT_SECRET, scope: E.BO_SCOPE, user: E.BO_USER, pass: E.BO_PASS, kunde: E.BO_CUSTOMER },
   }[h];
   return cfg && cfg.base && cfg.auth && cfg.client && cfg.user && cfg.pass ? { h, ...cfg, base: cfg.base.replace(/\/+$/, "") } : null;
 }
@@ -49,7 +49,7 @@ async function getToken(H) {
   const post = (extra = {}) => fetch(H.auth, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json", ...extra },
-    body: new URLSearchParams({ grant_type: "password", client_id: H.client, ...(H.secret ? { client_secret: H.secret } : {}), username, password: H.pass }),
+    body: new URLSearchParams({ grant_type: "password", client_id: H.client, ...(H.secret ? { client_secret: H.secret } : {}), ...(H.scope ? { scope: H.scope } : {}), username, password: H.pass }),
   });
   const lies = async (r) => { const txt = await r.text().catch(() => ""); let j = {}; try { j = JSON.parse(txt); } catch {} return { r, txt, j }; };
   let a = await lies(await post());

@@ -24,7 +24,7 @@ Inhalt
      Zajadacz         OMD_TOKEN_URL, OMD_BASE_URL, OMD_CLIENT_ID, OMD_USER, OMD_PASS
      Wiedemann        WIE_USER, WIE_PASS   (Benutzerdaten des Wiedemann-Onlineshops)
                       WIE_CLIENT_ID (von Wiedemann, die Zajadacz-ID wird abgelehnt),
-                      optional WIE_CLIENT_SECRET, WIE_CUSTOMER
+                      Scope openMasterdata ist eingebaut (optional WIE_SCOPE), kein Client-Secret
      Bär & Ollenroth  BO_BASE_URL, BO_TOKEN_URL, BO_USER, BO_PASS, optional BO_CLIENT_ID
    Welcher Großhändler abgefragt wird, ergibt sich aus der Arbeitsart der Monteure:
    nur Elektro → Zajadacz, kein Elektro → Wiedemann, gemischt → erst Zajadacz, dann Wiedemann.
