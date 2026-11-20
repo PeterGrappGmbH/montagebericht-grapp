@@ -424,10 +424,11 @@ document.addEventListener("input",e=>{const t=e.target;
     if(x){Object.assign(M[i],{a:x[0],b:x[1],e:x[3]});const q=s=>document.querySelector(`[data-m="${i}"][data-f="${s}"]`);q("b").value=x[1];q("e").value=x[3];if(n!=v)t.value=n;$("sg"+i).innerHTML=""}}}
   if((t.id=="aplz"||t.id=="rp")&&/^\d{5}$/.test(t.value.trim())){const z=t.value.trim();plzOrt(z).then(o=>{if(o&&t.value.trim()==z){t.value=z+" "+o;save()}})}
 });
-document.addEventListener("change",e=>{const t=e.target;if(t.dataset.z!=null){Z[t.dataset.z][t.dataset.f]=t.value;if(t.dataset.f=="an"){drawZ();if(t.value=="Sonstige")$("ans"+t.dataset.z).focus()}}if(t.dataset.m!=null)M[t.dataset.m][t.dataset.f]=t.value});
+document.addEventListener("change",e=>{const t=e.target;if(t.dataset.m!=null&&t.dataset.f=="a")setTimeout(()=>artLookup(+t.dataset.m),0);if(t.dataset.z!=null){Z[t.dataset.z][t.dataset.f]=t.value;if(t.dataset.f=="an"){drawZ();if(t.value=="Sonstige")$("ans"+t.dataset.z).focus()}}if(t.dataset.m!=null)M[t.dataset.m][t.dataset.f]=t.value});
 document.addEventListener("click",e=>{const t=e.target;
   if(t.dataset.dz!=null){Z.splice(+t.dataset.dz,1);drawZ()}
   if(t.dataset.dm!=null){M.splice(+t.dataset.dm,1);drawM()}
+  const sgn=t.closest("[data-sgn]");if(sgn){const i=+sgn.dataset.sgi;Object.assign(M[i],{a:sgn.dataset.sgn,b:"",pe:1});drawM();artLookup(i);return}
   const sgb=t.closest("[data-sga]");if(sgb){const i=+sgb.dataset.sgi,x=ART.find(a=>a[0]==sgb.dataset.sga);Object.assign(M[i],{a:x[0],b:x[1],e:x[3],pe:x[5]});drawM();const q=document.querySelector(`[data-m="${i}"][data-f="q"]`);q.focus();q.select()}
   if(t.dataset.sch){sch=t.dataset.sch;document.querySelectorAll("[data-sch]").forEach(b=>{b.classList.toggle("s",b.dataset.sch==sch);b.classList.toggle("nein",b.dataset.sch=="ja"&&sch=="ja")});$("schtx").hidden=sch!="ja";$("r-sch").classList.remove("miss")}
   if(t.dataset.gw){const k=t.dataset.gw;GW=GW.includes(k)?GW.filter(x=>x!=k):GW.concat(k);paintPills();$("r-gw").classList.remove("miss")}
@@ -444,7 +445,20 @@ let ARTN=null;
 function sugg(i,q){const el=$("sg"+i);if(!ARTN)ARTN=ART.map(a=>norm(a[1]+" "+a[2]+" "+a[0]));const w=q.trim().split(/\s+/).map(norm).filter(Boolean);
   if(!w.length||q.trim().length<2){el.innerHTML="";return}
   const hits=ART.map((a,k)=>[a,k]).filter(([a,k])=>w.every(x=>ARTN[k].includes(x))).slice(0,8);
-  el.innerHTML=hits.length?hits.map(([a])=>`<button type="button" data-sga="${a[0]}" data-sgi="${i}"><b>${a[0]}</b><span>${esc(a[1])}<small>${esc(a[2])} · ${a[3]}</small></span></button>`).join(""):`<p class="none">Nicht in der Artikelliste. Einfach als Freitext eintragen, Artikel-Nr. bleibt dann leer.</p>`}
+  el.innerHTML=hits.length?hits.map(([a])=>`<button type="button" data-sga="${a[0]}" data-sgi="${i}"><b>${a[0]}</b><span>${esc(a[1])}<small>${esc(a[2])} · ${a[3]}</small></span></button>`).join(""):isNr(q)?`<button type="button" data-sgn="${esc(q.trim())}" data-sgi="${i}"><b>${esc(q.trim())}</b><span>Artikel-Nr. übernehmen<small>Bezeichnung wird bei ${hl().map(h=>HN[h]).join(" / ")} nachgeschlagen</small></span></button>`
+    :`<p class="none">Nicht in der Artikelliste. Einfach als Freitext eintragen, Artikel-Nr. bleibt dann leer.</p>`}
+/* Artikel-Nr. eines Großhändlers (nicht in der gespeicherten Liste): live nachschlagen, Bezeichnung/Einheit eintragen */
+const isNr=q=>/^\d[\d.\-]{3,19}$/.test(q.trim());
+const EINH={C62:"Stk",PCE:"Stk",H87:"Stk",ST:"Stk",STK:"Stk",STCK:"Stk",MTR:"m",M:"m",PK:"Pkt",PKT:"Pkt",PAK:"Pkt"};
+async function artLookup(i){const r=M[i],a=String(r&&r.a||"").trim(),el=$("sg"+i);if(!r||!isNr(a)||ART.some(x=>x[0]==a))return;
+  const h=hl().join(",");if(el)el.innerHTML=`<p class="none">Suche ${esc(a)} bei ${hl().map(x=>HN[x]).join(" / ")} …</p>`;
+  let d=null,f="";try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),15000);const res=await fetch("/.netlify/functions/preise?a="+encodeURIComponent(a)+"&h="+h,{cache:"no-store",signal:c.signal});clearTimeout(tm);
+    const j=await res.json().catch(()=>({}));d=(j.artikel||{})[a]||null;f=(j.fehler||[]).join(", ")||j.error||(res.ok?"":"HTTP "+res.status)}catch(e){f="keine Verbindung"}
+  if(M[i]!==r||String(r.a).trim()!=a)return;const el2=$("sg"+i);
+  if(d){putPrice(a,d);if(!String(r.b||"").trim()||r.b.trim()==a)r.b=d.bez||r.b;const e=EINH[String(d.einheit||"").toUpperCase()];if(e)r.e=e;save();
+    const q=s=>document.querySelector(`[data-m="${i}"][data-f="${s}"]`);if(q("b"))q("b").value=r.b;if(q("e"))q("e").value=r.e;
+    const g=$("sg"+i);if(g)g.innerHTML=`<p class="none">✓ ${esc(a)} bei ${HN[d.h]||"Großhändler"} gefunden.</p>`}
+  else if(el2)el2.innerHTML=`<p class="none">${esc(a)} bei ${hl().map(x=>HN[x]).join(" / ")} nicht gefunden${/login|nicht_eingerichtet|not_configured/.test(f)?" (Anmeldung beim Großhändler fehlgeschlagen)":f=="keine Verbindung"?" (keine Verbindung)":""}. Bitte Bezeichnung von Hand eintragen.</p>`;save()}
 
 /* Dok.-Nr.: Schrägstrich nach den ersten 2 Ziffern automatisch (wie Wartungsprotokolle) */
 $("doc").addEventListener("input",e=>{const t=e.target;if(!/^insert/.test(e.inputType||""))return;let v=t.value;
@@ -629,11 +643,12 @@ const _drawPH=drawPH;drawPH=function(){_drawPH();PHS.forEach(x=>{if(!x.s){x.s=1;
    Reihenfolge der Großhändler nach Gewerk (hl).
    Klappt das nicht (offline, Vorschau), bleibt die gespeicherte Preisliste. */
 let LIVEK="";
+function putPrice(a0,d){const a=!d.h||d.h=="zaj"?a0:d.h+":"+a0,old=PRICE[a]||{};PRICE[a]=d.h=="wie"?{lp:d.uvp,cu:0,pe:d.basis||1,live:true}:{lp:d.uvp,cu:d.zuschlag!=null?d.zuschlag:(old.cu||0),pe:d.basis||1,live:d.zuschlag!=null||!d.cu}}
 async function livePrices(){const ids=[...new Set(M.map(r=>String(r.a||"").trim()).filter(x=>/^[\w.\-]{3,20}$/.test(x)))].sort(),h=hl().join(","),k=ids.join(",")+"|"+h+"|"+new Date().toDateString();
   if(!ids.length||k==LIVEK)return;
   try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),15000);const r=await fetch("/.netlify/functions/preise?a="+encodeURIComponent(ids.join(","))+"&h="+h,{cache:"no-store",signal:c.signal});clearTimeout(tm);
     if(!r.ok)return;const j=await r.json();
-    for(const [a0,d] of Object.entries(j.artikel||{})){const a=!d.h||d.h=="zaj"?a0:d.h+":"+a0,old=PRICE[a]||{};PRICE[a]=d.h=="wie"?{lp:d.uvp,cu:0,pe:d.basis||1,live:true}:{lp:d.uvp,cu:d.zuschlag!=null?d.zuschlag:(old.cu||0),pe:d.basis||1,live:d.zuschlag!=null||!d.cu}}
+    for(const [a0,d] of Object.entries(j.artikel||{}))putPrice(a0,d);
     if(j.kupfer)PSTAND=j.kupfer.stand+" · Kupfernotiz "+j.kupfer.wert.toLocaleString("de-DE",{minimumFractionDigits:2})+" €/100 kg";
     LIVEK=k}catch(e){}}
 async function makePdf(vv){if(vv=="intern")await livePrices();const keep=ver;ver=vv;render();const w=$("pdfwork");w.innerHTML="";
