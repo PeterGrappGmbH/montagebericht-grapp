@@ -364,7 +364,7 @@ const brutto=lp=>Math.round(lp*119+1e-6)/100;
 const HN={zaj:"Zajadacz",wie:"Wiedemann",bo:"Bär & Ollenroth"};
 const hl=()=>{const a=Z.map(r=>r.art).filter(Boolean);if(!a.length)return["zaj"];const el=a.includes("el"),and=a.some(x=>x!="el");return el&&and?["zaj","wie"]:el?["zaj"]:["wie"]};
 const pk=r=>{for(const h of hl()){const k=h=="zaj"?r.a:h+":"+r.a;if(PRICE[k])return k}return null};
-/* Freie Positionen: „Gekauft bei“ und „Preis laut Beleg“ sind nur Info fürs Büro.
+/* Freie Positionen: „Gekauft bei“ ist nur Info fürs Büro (Monteure haben nur Lieferscheine, keine Preise).
    „Preis Büro“ (nur in den Entwicklertools) ist der Abrechnungspreis je Mengeneinheit und geht vor. */
 const hasPo=r=>String(r.po||"").trim()!="";
 const vk=r=>{if(hasPo(r))return qn(r.po);const k=pk(r),x=k&&PRICE[k];if(!x)return null;const pe=x.pe||+r.pe||1;return (brutto(x.lp)+2*(x.cu||0))/pe};
@@ -408,7 +408,6 @@ function drawM(){
   <label>Einheit<select data-m="${i}" data-f="e">${["Stk","m","VE","Pkt","Std","psch"].map(x=>`<option${x==r.e?" selected":""}>${x}</option>`).join("")}</select></label>
   <label>Artikel-Nr.<input data-m="${i}" data-f="a" value="${esc(r.a)}"></label>
   <label>Gekauft bei<input data-m="${i}" data-f="qu" value="${esc(r.qu||"")}" placeholder="optional"></label>
-  <label>Preis laut Beleg (€)<input data-m="${i}" data-f="bp" value="${esc(r.bp||"")}" inputmode="decimal" placeholder="optional"></label>
   ${devUnlocked()?`<label>Preis Büro (€ je Einheit)<input data-m="${i}" data-f="po" value="${esc(r.po||"")}" inputmode="decimal"></label>`:""}</div></div>`).join("");
 }
 /* PLZ → Ort (wie Wartungsprotokolle): Berlin offline, sonst openplzapi.org / zippopotam.us, Ergebnisse werden gemerkt */
@@ -509,7 +508,7 @@ function render(){
   const IN=ver=="intern";let tot=0,open=0;
   const pr=(ep,q)=>{if(!IN)return"<td></td>";if(ep==null){open++;return'<td class="num">–</td><td class="num">–</td>'}const g=Math.round(ep*q*100+1e-6)/100;tot+=g;return`<td class="num">${ep.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:4})}</td><td class="num">${eur(g)}</td>`};
   const mr=M.filter(r=>r.b||r.q).map(r=>{const k=pk(r),ep=vk(r);
-    const inf=[hasPo(r)&&"Preis Büro",k&&k.includes(":")&&HN[k.split(":")[0]],!k&&!hasPo(r)&&"freie Position",r.qu&&"gekauft bei "+esc(r.qu),r.bp&&"Beleg "+esc(r.bp)+" €"].filter(Boolean);
+    const inf=[hasPo(r)&&"Preis Büro",k&&k.includes(":")&&HN[k.split(":")[0]],!k&&!hasPo(r)&&"freie Position",r.qu&&"gekauft bei "+esc(r.qu)].filter(Boolean);
     const det=IN&&inf.length?` <span style="color:#666">(${inf.join(" · ")})</span>`:"";
     return `<tr><td class="num">${esc(r.q)} ${esc(r.e)}</td><td>${esc(r.b)}${det}</td><td>${esc(r.a)}</td>${pr(ep,qn(r.q))}</tr>`}).join("");
   const yn=k=>YN[k]=="ja"?"Ja":YN[k]=="nein"?"Nein":"";
@@ -725,7 +724,7 @@ archPrune();
 
 /* ---------- Was ist neu (einmal pro Version) ---------- */
 const NEWS={id:"2026-11-20",t:"Neu im Montagebericht",l:[
-  "Material, das nicht über das Büro bestellt wurde (z. B. selbst besorgt): bei „Gekauft bei“ eintragen, wo es herkommt, und wenn bekannt den „Preis laut Beleg“. Den Beleg bitte als Foto anhängen.",
+  "Material, das nicht über das Büro bestellt wurde (z. B. selbst besorgt): bei „Gekauft bei“ eintragen, wo es herkommt, und den Lieferschein als Foto anhängen.",
   "Unterschrift: Das Feld erst über „Zum Unterschreiben entsperren“ freischalten. So entstehen beim Scrollen keine Striche.",
   "Arbeitszeit: Für jeden Monteur die Arbeitsart wählen (Elektro, Sanitär, WP oder Kältetechnik).",
   "„Zuletzt erstellt“ unten rechts: Gesendete Berichte bleiben 3 Wochen auf dem iPad und lassen sich wieder öffnen und korrigieren.",
