@@ -19,6 +19,14 @@ Inhalt
      MAIL_TO         wartung@elektro-grapp.de   (Empfänger im Büro)
      ALLOWED_ORIGIN  https://<eure-site>.netlify.app
    Optional: SMTP_PORT 465 statt 587, falls 587 nicht geht.
+
+   Großhändler-Preise (Open Masterdata, nur für die interne Fassung):
+     Zajadacz         OMD_TOKEN_URL, OMD_BASE_URL, OMD_CLIENT_ID, OMD_USER, OMD_PASS
+     Wiedemann        WIE_USER, WIE_PASS   (Benutzerdaten des Wiedemann-Onlineshops)
+                      optional WIE_CUSTOMER, WIE_CLIENT_ID (sonst wie OMD_CLIENT_ID)
+     Bär & Ollenroth  BO_BASE_URL, BO_TOKEN_URL, BO_USER, BO_PASS, optional BO_CLIENT_ID
+   Welcher Großhändler abgefragt wird, ergibt sich aus der Arbeitsart der Monteure:
+   nur Elektro → Zajadacz, kein Elektro → Wiedemann, gemischt → erst Zajadacz, dann Wiedemann.
    Danach einmal neu deployen.
 
 3. Testen

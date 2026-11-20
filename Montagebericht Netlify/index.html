@@ -358,7 +358,12 @@ const PRICE={"0062653":{"lp":4.7,"cu":0},"0106872":{"lp":588.0,"cu":566.0},"0110
 /* Verkaufspreis je Mengeneinheit = (Listenpreis + 2 × Kupferzuschlag) / Preiseinheit */
 /* Kalkulation: UVP inkl. MwSt (Listenpreis netto × 1,19) + 2 × Zuschlag, je Preiseinheit */
 const brutto=lp=>Math.round(lp*119+1e-6)/100;
-const vk=r=>{const x=PRICE[r.a];if(!x)return null;const pe=x.pe||+r.pe||1;return (brutto(x.lp)+2*(x.cu||0))/pe};
+/* Großhändler nach Gewerk: nur Elektro → Zajadacz; kein Elektro → Wiedemann (später auch Bär & Ollenroth);
+   gemischt → erst Zajadacz, dann Wiedemann. Preise anderer Händler stehen in PRICE unter "<h>:<Artikel-Nr.>". */
+const HN={zaj:"Zajadacz",wie:"Wiedemann",bo:"Bär & Ollenroth"};
+const hl=()=>{const a=Z.map(r=>r.art).filter(Boolean);if(!a.length)return["zaj"];const el=a.includes("el"),and=a.some(x=>x!="el");return el&&and?["zaj","wie"]:el?["zaj"]:["wie"]};
+const pk=r=>{for(const h of hl()){const k=h=="zaj"?r.a:h+":"+r.a;if(PRICE[k])return k}return null};
+const vk=r=>{const k=pk(r),x=k&&PRICE[k];if(!x)return null;const pe=x.pe||+r.pe||1;return (brutto(x.lp)+2*(x.cu||0))/pe};
 const qn=v=>parseFloat(String(v||"").replace(",","."))||0;
 let sch="",YN={klein:"",dicht:""},ver="kunde",sent=null,officeSent=null;
 /* Stundensätze (intern): 68 € Elektro/Sanitär, 74 € Kältegeräte und Wärmepumpen */
@@ -496,8 +501,8 @@ function render(){
   const zr=Z.map(r=>`<tr><td>${esc(r.m)}</td><td>${GWN[r.art]||""}</td><td>${dt(r.d)}</td><td class="num">${esc(r.v)}</td><td class="num">${esc(r.b)}</td><td class="num">${fh(hrs(r))}</td><td class="num">${esc(anz(r))}</td><td class="num">${esc(r.km)}</td>${ver=="intern"?`<td class="num">${eur(satz(r))}</td><td class="num">${eur(lohn(r))}</td><td class="num">${eur(fahrt(r))}</td>`:""}</tr>`).join("");
   const IN=ver=="intern";let tot=0,open=0;
   const pr=(ep,q)=>{if(!IN)return"<td></td>";if(ep==null){open++;return'<td class="num">–</td><td class="num">–</td>'}const g=Math.round(ep*q*100+1e-6)/100;tot+=g;return`<td class="num">${ep.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:4})}</td><td class="num">${eur(g)}</td>`};
-  const mr=M.filter(r=>r.b||r.q).map(r=>{const x=PRICE[r.a],ep=vk(r);
-    const det="";
+  const mr=M.filter(r=>r.b||r.q).map(r=>{const k=pk(r),ep=vk(r);
+    const det=IN&&k&&k.includes(":")?` <span style="color:#666">(${HN[k.split(":")[0]]})</span>`:"";
     return `<tr><td class="num">${esc(r.q)} ${esc(r.e)}</td><td>${esc(r.b)}${det}</td><td>${esc(r.a)}</td>${pr(ep,qn(r.q))}</tr>`}).join("");
   const yn=k=>YN[k]=="ja"?"Ja":YN[k]=="nein"?"Nein":"";
   const blank=n=>Array(Math.max(0,n)).fill(`<tr><td></td><td></td><td></td><td></td>${IN?"<td></td>":""}</tr>`).join("");const e5=IN?"<td></td>":"";
@@ -613,14 +618,15 @@ $("devdl").onclick=()=>{const m=$("devmsg");m.classList.remove("ok");m.textConte
 const _drawPH=drawPH;drawPH=function(){_drawPH();PHS.forEach(x=>{if(!x.s){x.s=1;idbPut(x.id,x.u)}});save()};
 
 /* ---------- PDF erstellen ---------- */
-/* Tagesaktuelle Zajadacz-Preise (UVP + Kupferzuschlag aus der Tages-Kupfernotiz) über die Netlify-Funktion holen.
+/* Tagesaktuelle Großhändler-Preise (UVP + Kupferzuschlag aus der Tages-Kupfernotiz) über die Netlify-Funktion holen,
+   Reihenfolge der Großhändler nach Gewerk (hl).
    Klappt das nicht (offline, Vorschau), bleibt die gespeicherte Preisliste. */
 let LIVEK="";
-async function livePrices(){const ids=[...new Set(M.map(r=>String(r.a||"").trim()).filter(x=>/^[\w.\-]{3,20}$/.test(x)))].sort(),k=ids.join(",")+"|"+new Date().toDateString();
+async function livePrices(){const ids=[...new Set(M.map(r=>String(r.a||"").trim()).filter(x=>/^[\w.\-]{3,20}$/.test(x)))].sort(),h=hl().join(","),k=ids.join(",")+"|"+h+"|"+new Date().toDateString();
   if(!ids.length||k==LIVEK)return;
-  try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),15000);const r=await fetch("/.netlify/functions/preise?a="+encodeURIComponent(ids.join(",")),{cache:"no-store",signal:c.signal});clearTimeout(tm);
+  try{const c=new AbortController(),tm=setTimeout(()=>c.abort(),15000);const r=await fetch("/.netlify/functions/preise?a="+encodeURIComponent(ids.join(","))+"&h="+h,{cache:"no-store",signal:c.signal});clearTimeout(tm);
     if(!r.ok)return;const j=await r.json();
-    for(const [a,d] of Object.entries(j.artikel||{})){const old=PRICE[a]||{};PRICE[a]={lp:d.uvp,cu:d.zuschlag!=null?d.zuschlag:(old.cu||0),pe:d.basis||1,live:d.zuschlag!=null||!d.cu}}
+    for(const [a0,d] of Object.entries(j.artikel||{})){const a=!d.h||d.h=="zaj"?a0:d.h+":"+a0,old=PRICE[a]||{};PRICE[a]={lp:d.uvp,cu:d.zuschlag!=null?d.zuschlag:(old.cu||0),pe:d.basis||1,live:d.zuschlag!=null||!d.cu}}
     if(j.kupfer)PSTAND=j.kupfer.stand+" · Kupfernotiz "+j.kupfer.wert.toLocaleString("de-DE",{minimumFractionDigits:2})+" €/100 kg";
     LIVEK=k}catch(e){}}
 async function makePdf(vv){if(vv=="intern")await livePrices();const keep=ver;ver=vv;render();const w=$("pdfwork");w.innerHTML="";
