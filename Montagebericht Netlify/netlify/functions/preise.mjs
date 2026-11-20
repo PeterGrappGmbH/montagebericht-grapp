@@ -45,19 +45,32 @@ async function getToken(H) {
   const t = C.token[H.h];
   if (t && Date.now() < t.exp) return t.v;
   const username = H.kunde ? `${H.user}\t${H.kunde}` : H.user;
-  const r = await fetch(H.auth, {
+  const post = (extra = {}) => fetch(H.auth, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json", ...extra },
     body: new URLSearchParams({ grant_type: "password", client_id: H.client, username, password: H.pass }),
   });
-  const j = await r.json().catch(() => ({}));
-  if (!j.access_token) {
-    // Grund aus der Antwort mitgeben (OAuth: error / error_description), nie Zugangsdaten
-    const grund = [j.error, j.error_description, j.message].filter((x) => typeof x === "string" && x).join(": ").slice(0, 160);
-    throw new Error(`${H.h}_login ${r.status}${grund ? " " + grund : ""}`);
+  const lies = async (r) => { const txt = await r.text().catch(() => ""); let j = {}; try { j = JSON.parse(txt); } catch {} return { r, txt, j }; };
+  let a = await lies(await post());
+  // Manche Shops (z. B. SAP) verlangen die Anmeldung zusätzlich per HTTP-Basic: dann einmal so wiederholen
+  let basic = null;
+  if (!a.j.access_token && a.r.status === 401 && /basic/i.test(a.r.headers.get("www-authenticate") || "")) {
+    basic = a;
+    a = await lies(await post({ Authorization: "Basic " + Buffer.from(`${H.user}:${H.pass}`).toString("base64") }));
   }
-  C.token[H.h] = { v: j.access_token, exp: Date.now() + Math.max(60, (j.expires_in || 3600) - 120) * 1000 };
-  return j.access_token;
+  if (!a.j.access_token) {
+    // Diagnose ohne Zugangsdaten: OAuth-Grund, Content-Type, WWW-Authenticate, Anfang der Antwort
+    const weg = (x) => [H.user, H.pass, H.kunde].filter(Boolean).reduce((v, z) => v.split(z).join("***"), String(x || ""));
+    const info = (x) => {
+      const grund = [x.j.error, x.j.error_description, x.j.message].filter((v) => typeof v === "string" && v).join(": ");
+      const text = x.txt.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      return [x.r.status, grund, "ct=" + (x.r.headers.get("content-type") || "-"), x.r.headers.get("www-authenticate") && "auth=" + x.r.headers.get("www-authenticate"), !grund && text && "text=" + text.slice(0, 140)]
+        .filter(Boolean).join(" | ");
+    };
+    throw new Error(weg(`${H.h}_login ${info(a)}${basic ? " (nach Basic; vorher: " + info(basic) + ")" : ""}`).slice(0, 600));
+  }
+  C.token[H.h] = { v: a.j.access_token, exp: Date.now() + Math.max(60, (a.j.expires_in || 3600) - 120) * 1000 };
+  return a.j.access_token;
 }
 
 async function getArtikel(H, token, pid) {
