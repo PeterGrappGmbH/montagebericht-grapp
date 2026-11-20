@@ -74,15 +74,25 @@ async function getToken(H) {
   return a.j.access_token;
 }
 
-async function getArtikel(H, token, pid) {
+async function getArtikel(H, token, pid, dg) {
   const key = H.h + ":" + pid, hit = C.art.get(key);
-  if (hit && hit.tag === today()) return hit.d;
+  if (!dg && hit && hit.tag === today()) return hit.d;
   const url = `${H.base}/product/bySupplierPID?supplierPid=${encodeURIComponent(pid)}&datapackage=basic&datapackage=prices`;
   const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+  const txt = await r.text().catch(() => "");
+  let b = null; try { b = JSON.parse(txt); } catch {}
+  if (Array.isArray(b)) b = b[0] || null;   // manche Shops liefern eine Liste statt eines Artikels
+  if (dg) {
+    // Diagnose (?diag=1): Aufbau der Antwort, ohne Netto-/Einkaufspreise
+    const pr = (b && b.prices) || {};
+    dg.push({ h: H.h, pid, status: r.status, ct: r.headers.get("content-type") || "", felder: b ? Object.keys(b) : null,
+      basic: b && b.basic ? Object.keys(b.basic) : null, preisfelder: Object.keys(pr), listPrice: pr.listPrice || null, rrp: pr.rrp || null,
+      text: b ? undefined : txt.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300) });
+  }
   if (r.status === 404 || r.status === 400) { C.art.set(key, { tag: today(), d: null }); return null; }
   if (r.status === 401) delete C.token[H.h];
   if (!r.ok) throw new Error(`${H.h}_artikel ${r.status}`);
-  const b = await r.json();
+  if (!b) throw new Error(`${H.h}_artikel keine_json_antwort`);
   // nur Listenpreis/UVP, nie netPrice. Wiedemann: Kalkulation auf dem Bruttopreis (listPrice), sonst UVP zuerst
   const p = (b && b.prices) || {}, lp = H.h === "wie" ? p.listPrice || p.rrp : p.rrp || p.listPrice;
   if (!lp || num(lp.value) == null) { C.art.set(key, { tag: today(), d: null }); return null; }
@@ -145,7 +155,7 @@ export default async (req) => {
   const wunsch = [...new Set((u.searchParams.get("h") || "zaj").split(",").map((s) => s.trim().toLowerCase()))].filter((h) => ["zaj", "wie", "bo"].includes(h));
   const liste = wunsch.map((h) => haendler(h, E)).filter(Boolean);
 
-  const out = { kupfer: null, artikel: {}, fehler: wunsch.filter((h) => !haendler(h, E)).map((h) => h + "_nicht_eingerichtet") };
+  const out = { kupfer: null, artikel: {}, ...(u.searchParams.get("diag") ? { diag: [] } : {}), fehler: wunsch.filter((h) => !haendler(h, E)).map((h) => h + "_nicht_eingerichtet") };
   if (!liste.length) return json({ ...out, error: "not_configured" }, 500);
   if (haendler("zaj", E)) { try { out.kupfer = await getKupfer(E); } catch (e) { out.fehler.push(String(e.message)); } }
 
@@ -157,7 +167,7 @@ export default async (req) => {
     try { token = await getToken(H); } catch (e) { out.fehler.push(String(e.message)); continue; }
     await Promise.all(offen.map(async (pid) => {
       try {
-        const d0 = await getArtikel(H, token, pid);
+        const d0 = await getArtikel(H, token, pid, out.diag);
         if (!d0) return;
         const d = { ...d0 };
         if (d.cu != null && d.cuBasis != null && out.kupfer) {
@@ -169,6 +179,7 @@ export default async (req) => {
     }));
     offen = offen.filter((pid) => !out.artikel[pid]);
   }
-  // nur fehlerfreie Antworten zwischenspeichern, sonst bleibt ein behobener Fehler 10 Minuten sichtbar
-  return json(out, 200, out.fehler.length ? "no-store" : "private, max-age=600");
+  // nur vollständige, fehlerfreie Antworten zwischenspeichern, sonst bleibt ein behobener Fehler 10 Minuten sichtbar
+  const komplett = !out.fehler.length && !out.diag && pids.every((pid) => out.artikel[pid]);
+  return json(out, 200, komplett ? "private, max-age=600" : "no-store");
 };
