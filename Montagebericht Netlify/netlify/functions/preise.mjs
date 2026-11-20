@@ -36,7 +36,7 @@ const WIE_URL = "https://shop.wiedemann.de/openmasterdata(bD1kZSZjPTEwMA==)";
 function haendler(h, E) {
   const cfg = {
     zaj: { base: E.OMD_BASE_URL, auth: E.OMD_TOKEN_URL, client: E.OMD_CLIENT_ID, scope: E.OMD_SCOPE, user: E.OMD_USER, pass: E.OMD_PASS, kunde: E.OMD_CUSTOMER },
-    wie: { base: E.WIE_BASE_URL || WIE_URL, auth: E.WIE_TOKEN_URL || WIE_URL + "/auth", client: E.WIE_CLIENT_ID || E.OMD_CLIENT_ID, secret: E.WIE_CLIENT_SECRET, scope: E.WIE_SCOPE || "openMasterdata", user: E.WIE_USER, pass: E.WIE_PASS, kunde: E.WIE_CUSTOMER },
+    wie: { base: E.WIE_BASE_URL || WIE_URL, auth: E.WIE_TOKEN_URL || WIE_URL + "/auth", client: E.WIE_CLIENT_ID || E.OMD_CLIENT_ID, secret: E.WIE_CLIENT_SECRET, scope: E.WIE_SCOPE || "openMasterdata", getrennt: true, user: E.WIE_USER, pass: E.WIE_PASS, kunde: E.WIE_CUSTOMER },
     bo: { base: E.BO_BASE_URL, auth: E.BO_TOKEN_URL, client: E.BO_CLIENT_ID || E.OMD_CLIENT_ID, secret: E.BO_CLIENT_SECRET, scope: E.BO_SCOPE, user: E.BO_USER, pass: E.BO_PASS, kunde: E.BO_CUSTOMER },
   }[h];
   return cfg && cfg.base && cfg.auth && cfg.client && cfg.user && cfg.pass ? { h, ...cfg, base: cfg.base.replace(/\/+$/, "") } : null;
@@ -84,11 +84,18 @@ async function getArtikel(H, token, pid, dg) {
     if (Array.isArray(b)) b = b[0] || null;   // manche Shops liefern eine Liste statt eines Artikels
     return { r, txt, b };
   };
-  // Datenpakete: Zajadacz nimmt sie wiederholt (datapackage=basic&datapackage=prices); andere Shops (Wiedemann)
-  // liefern so nur „basic“. Dann kommagetrennt und notfalls „prices“ einzeln nachfragen.
-  let { r, txt, b } = await hole("datapackage=basic&datapackage=prices");
+  // Datenpakete: Zajadacz nimmt sie wiederholt (datapackage=basic&datapackage=prices). Liefert ein anderer Shop
+  // so nur „basic“, wird kommagetrennt und notfalls „prices“ einzeln nachgefragt.
+  // Wiedemann liefert Preise nur bei datapackage=prices allein: Stammdaten und Preise gleichzeitig abfragen
   const versuche = [];
-  if (r.ok && b && !b.prices) {
+  let r, txt, b;
+  if (H.getrennt) {
+    const [s1, s2] = await Promise.all([hole("datapackage=basic"), hole("datapackage=prices")]);
+    ({ r, txt, b } = s1);
+    if (b && s2.r.ok && s2.b && s2.b.prices) b = { ...b, prices: s2.b.prices };
+    else versuche.push(`prices: ${s2.r.status} ${s2.b ? Object.keys(s2.b).join("/") : "-"}`);
+  } else ({ r, txt, b } = await hole("datapackage=basic&datapackage=prices"));
+  if (!H.getrennt && r.ok && b && !b.prices) {
     versuche.push("basic+prices: ohne prices");
     const v2 = await hole("datapackage=basic,prices");
     if (v2.r.ok && v2.b && v2.b.prices) ({ r, txt, b } = v2);
@@ -111,7 +118,8 @@ async function getArtikel(H, token, pid, dg) {
   if (r.status === 401) delete C.token[H.h];
   if (!r.ok) throw new Error(`${H.h}_artikel ${r.status}`);
   if (!b) throw new Error(`${H.h}_artikel keine_json_antwort`);
-  // nur Listenpreis/UVP, nie netPrice. Wiedemann: Kalkulation auf dem Bruttopreis (listPrice), sonst UVP zuerst
+  // nur Listenpreis/UVP, nie netPrice. Wiedemann: Kalkulation auf dem Bruttopreis (listPrice; Wiedemann liefert
+  // stattdessen nur rrp, der dann als Bruttopreis gilt), sonst UVP zuerst
   const p = (b && b.prices) || {}, lp = H.h === "wie" ? p.listPrice || p.rrp : p.rrp || p.listPrice;
   if (!lp || num(lp.value) == null) { C.art.set(key, { tag: today(), d: null }); return null; }
   const cu = (p.rawMaterial || []).find((m) => /^cu$/i.test(m.material || ""));
