@@ -51,7 +51,11 @@ async function getToken(H) {
     body: new URLSearchParams({ grant_type: "password", client_id: H.client, username, password: H.pass }),
   });
   const j = await r.json().catch(() => ({}));
-  if (!j.access_token) throw new Error(`${H.h}_login ${r.status}`);
+  if (!j.access_token) {
+    // Grund aus der Antwort mitgeben (OAuth: error / error_description), nie Zugangsdaten
+    const grund = [j.error, j.error_description, j.message].filter((x) => typeof x === "string" && x).join(": ").slice(0, 160);
+    throw new Error(`${H.h}_login ${r.status}${grund ? " " + grund : ""}`);
+  }
   C.token[H.h] = { v: j.access_token, exp: Date.now() + Math.max(60, (j.expires_in || 3600) - 120) * 1000 };
   return j.access_token;
 }
