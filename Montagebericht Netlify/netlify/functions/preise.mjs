@@ -15,9 +15,10 @@
 // Umgebungsvariablen
 //   Zajadacz:          OMD_TOKEN_URL, OMD_BASE_URL, OMD_CLIENT_ID, OMD_USER, OMD_PASS, optional OMD_CUSTOMER,
 //                      optional SHOP_URL (Standard https://www.zajadacz.de)
-//   Wiedemann:         WIE_USER, WIE_PASS, optional WIE_CUSTOMER, WIE_CLIENT_ID (Standard: OMD_CLIENT_ID),
+//   Wiedemann:         WIE_USER, WIE_PASS, WIE_CLIENT_ID (von Wiedemann; ohne wird OMD_CLIENT_ID versucht → invalid_client),
+//                      optional WIE_CLIENT_SECRET, WIE_CUSTOMER,
 //                      WIE_BASE_URL / WIE_TOKEN_URL (Standard: Adressen aus der Wiedemann-Mail)
-//   Bär & Ollenroth:   BO_BASE_URL, BO_TOKEN_URL, BO_USER, BO_PASS, optional BO_CUSTOMER, BO_CLIENT_ID
+//   Bär & Ollenroth:   BO_BASE_URL, BO_TOKEN_URL, BO_USER, BO_PASS, optional BO_CUSTOMER, BO_CLIENT_ID, BO_CLIENT_SECRET
 //   allgemein:         ALLOWED_ORIGIN
 import { freigeschaltet } from "../lib/zugang.mjs";
 
@@ -35,8 +36,8 @@ const WIE_URL = "https://shop.wiedemann.de/openmasterdata(bD1kZSZjPTEwMA==)";
 function haendler(h, E) {
   const cfg = {
     zaj: { base: E.OMD_BASE_URL, auth: E.OMD_TOKEN_URL, client: E.OMD_CLIENT_ID, user: E.OMD_USER, pass: E.OMD_PASS, kunde: E.OMD_CUSTOMER },
-    wie: { base: E.WIE_BASE_URL || WIE_URL, auth: E.WIE_TOKEN_URL || WIE_URL + "/auth", client: E.WIE_CLIENT_ID || E.OMD_CLIENT_ID, user: E.WIE_USER, pass: E.WIE_PASS, kunde: E.WIE_CUSTOMER },
-    bo: { base: E.BO_BASE_URL, auth: E.BO_TOKEN_URL, client: E.BO_CLIENT_ID || E.OMD_CLIENT_ID, user: E.BO_USER, pass: E.BO_PASS, kunde: E.BO_CUSTOMER },
+    wie: { base: E.WIE_BASE_URL || WIE_URL, auth: E.WIE_TOKEN_URL || WIE_URL + "/auth", client: E.WIE_CLIENT_ID || E.OMD_CLIENT_ID, secret: E.WIE_CLIENT_SECRET, user: E.WIE_USER, pass: E.WIE_PASS, kunde: E.WIE_CUSTOMER },
+    bo: { base: E.BO_BASE_URL, auth: E.BO_TOKEN_URL, client: E.BO_CLIENT_ID || E.OMD_CLIENT_ID, secret: E.BO_CLIENT_SECRET, user: E.BO_USER, pass: E.BO_PASS, kunde: E.BO_CUSTOMER },
   }[h];
   return cfg && cfg.base && cfg.auth && cfg.client && cfg.user && cfg.pass ? { h, ...cfg, base: cfg.base.replace(/\/+$/, "") } : null;
 }
@@ -48,7 +49,7 @@ async function getToken(H) {
   const post = (extra = {}) => fetch(H.auth, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json", ...extra },
-    body: new URLSearchParams({ grant_type: "password", client_id: H.client, username, password: H.pass }),
+    body: new URLSearchParams({ grant_type: "password", client_id: H.client, ...(H.secret ? { client_secret: H.secret } : {}), username, password: H.pass }),
   });
   const lies = async (r) => { const txt = await r.text().catch(() => ""); let j = {}; try { j = JSON.parse(txt); } catch {} return { r, txt, j }; };
   let a = await lies(await post());
@@ -60,7 +61,7 @@ async function getToken(H) {
   }
   if (!a.j.access_token) {
     // Diagnose ohne Zugangsdaten: OAuth-Grund, Content-Type, WWW-Authenticate, Anfang der Antwort
-    const weg = (x) => [H.user, H.pass, H.kunde].filter(Boolean).reduce((v, z) => v.split(z).join("***"), String(x || ""));
+    const weg = (x) => [H.user, H.pass, H.kunde, H.secret].filter(Boolean).reduce((v, z) => v.split(z).join("***"), String(x || ""));
     const info = (x) => {
       const grund = [x.j.error, x.j.error_description, x.j.message].filter((v) => typeof v === "string" && v).join(": ");
       const text = x.txt.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -168,5 +169,6 @@ export default async (req) => {
     }));
     offen = offen.filter((pid) => !out.artikel[pid]);
   }
-  return json(out, 200, "private, max-age=600");
+  // nur fehlerfreie Antworten zwischenspeichern, sonst bleibt ein behobener Fehler 10 Minuten sichtbar
+  return json(out, 200, out.fehler.length ? "no-store" : "private, max-age=600");
 };
