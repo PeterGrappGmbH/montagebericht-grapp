@@ -77,16 +77,34 @@ async function getToken(H) {
 async function getArtikel(H, token, pid, dg) {
   const key = H.h + ":" + pid, hit = C.art.get(key);
   if (!dg && hit && hit.tag === today()) return hit.d;
-  const url = `${H.base}/product/bySupplierPID?supplierPid=${encodeURIComponent(pid)}&datapackage=basic&datapackage=prices`;
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
-  const txt = await r.text().catch(() => "");
-  let b = null; try { b = JSON.parse(txt); } catch {}
-  if (Array.isArray(b)) b = b[0] || null;   // manche Shops liefern eine Liste statt eines Artikels
+  const hole = async (pakete) => {
+    const r = await fetch(`${H.base}/product/bySupplierPID?supplierPid=${encodeURIComponent(pid)}&${pakete}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+    const txt = await r.text().catch(() => "");
+    let b = null; try { b = JSON.parse(txt); } catch {}
+    if (Array.isArray(b)) b = b[0] || null;   // manche Shops liefern eine Liste statt eines Artikels
+    return { r, txt, b };
+  };
+  // Datenpakete: Zajadacz nimmt sie wiederholt (datapackage=basic&datapackage=prices); andere Shops (Wiedemann)
+  // liefern so nur „basic“. Dann kommagetrennt und notfalls „prices“ einzeln nachfragen.
+  let { r, txt, b } = await hole("datapackage=basic&datapackage=prices");
+  const versuche = [];
+  if (r.ok && b && !b.prices) {
+    versuche.push("basic+prices: ohne prices");
+    const v2 = await hole("datapackage=basic,prices");
+    if (v2.r.ok && v2.b && v2.b.prices) ({ r, txt, b } = v2);
+    else {
+      versuche.push(`basic,prices: ${v2.r.status} ${v2.b ? Object.keys(v2.b).join("/") : "-"}`);
+      const v3 = await hole("datapackage=prices");
+      versuche.push(`prices: ${v3.r.status} ${v3.b ? Object.keys(v3.b).join("/") : (v3.txt || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120)}`);
+      if (v3.r.ok && v3.b && v3.b.prices) b = { ...b, prices: v3.b.prices };
+    }
+  }
   if (dg) {
     // Diagnose (?diag=1): Aufbau der Antwort, ohne Netto-/Einkaufspreise
     const pr = (b && b.prices) || {};
     dg.push({ h: H.h, pid, status: r.status, ct: r.headers.get("content-type") || "", felder: b ? Object.keys(b) : null,
       basic: b && b.basic ? Object.keys(b.basic) : null, preisfelder: Object.keys(pr), listPrice: pr.listPrice || null, rrp: pr.rrp || null,
+      versuche: versuche.length ? versuche : undefined, basicRrp: b && b.basic && b.basic.rrp != null ? b.basic.rrp : undefined,
       text: b ? undefined : txt.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300) });
   }
   if (r.status === 404 || r.status === 400) { C.art.set(key, { tag: today(), d: null }); return null; }
