@@ -364,7 +364,10 @@ const brutto=lp=>Math.round(lp*119+1e-6)/100;
 const HN={zaj:"Zajadacz",wie:"Wiedemann",bo:"Bär & Ollenroth"};
 const hl=()=>{const a=Z.map(r=>r.art).filter(Boolean);if(!a.length)return["zaj"];const el=a.includes("el"),and=a.some(x=>x!="el");return el&&and?["zaj","wie"]:el?["zaj"]:["wie"]};
 const pk=r=>{for(const h of hl()){const k=h=="zaj"?r.a:h+":"+r.a;if(PRICE[k])return k}return null};
-const vk=r=>{const k=pk(r),x=k&&PRICE[k];if(!x)return null;const pe=x.pe||+r.pe||1;return (brutto(x.lp)+2*(x.cu||0))/pe};
+/* Freie Positionen: „Gekauft bei“ und „Preis laut Beleg“ sind nur Info fürs Büro.
+   „Preis Büro“ (nur in den Entwicklertools) ist der Abrechnungspreis je Mengeneinheit und geht vor. */
+const hasPo=r=>String(r.po||"").trim()!="";
+const vk=r=>{if(hasPo(r))return qn(r.po);const k=pk(r),x=k&&PRICE[k];if(!x)return null;const pe=x.pe||+r.pe||1;return (brutto(x.lp)+2*(x.cu||0))/pe};
 const qn=v=>parseFloat(String(v||"").replace(",","."))||0;
 let sch="",YN={klein:"",dicht:""},ver="kunde",sent=null,officeSent=null;
 /* Stundensätze (intern): 68 € Elektro/Sanitär, 74 € Kältegeräte und Wärmepumpen */
@@ -403,7 +406,10 @@ function drawM(){
   <div class="wide sugg" id="sg${i}" role="listbox"></div>
   <label>Menge<input data-m="${i}" data-f="q" value="${esc(r.q)}" inputmode="decimal"></label>
   <label>Einheit<select data-m="${i}" data-f="e">${["Stk","m","VE","Pkt","Std","psch"].map(x=>`<option${x==r.e?" selected":""}>${x}</option>`).join("")}</select></label>
-  <label>Artikel-Nr.<input data-m="${i}" data-f="a" value="${esc(r.a)}"></label></div></div>`).join("");
+  <label>Artikel-Nr.<input data-m="${i}" data-f="a" value="${esc(r.a)}"></label>
+  <label>Gekauft bei<input data-m="${i}" data-f="qu" value="${esc(r.qu||"")}" placeholder="optional"></label>
+  <label>Preis laut Beleg (€)<input data-m="${i}" data-f="bp" value="${esc(r.bp||"")}" inputmode="decimal" placeholder="optional"></label>
+  ${devUnlocked()?`<label>Preis Büro (€ je Einheit)<input data-m="${i}" data-f="po" value="${esc(r.po||"")}" inputmode="decimal"></label>`:""}</div></div>`).join("");
 }
 /* PLZ → Ort (wie Wartungsprotokolle): Berlin offline, sonst openplzapi.org / zippopotam.us, Ergebnisse werden gemerkt */
 const PLZC=(()=>{try{return JSON.parse(localStorage.getItem("mb-plz")||"{}")}catch(e){return{}}})();
@@ -503,7 +509,8 @@ function render(){
   const IN=ver=="intern";let tot=0,open=0;
   const pr=(ep,q)=>{if(!IN)return"<td></td>";if(ep==null){open++;return'<td class="num">–</td><td class="num">–</td>'}const g=Math.round(ep*q*100+1e-6)/100;tot+=g;return`<td class="num">${ep.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:4})}</td><td class="num">${eur(g)}</td>`};
   const mr=M.filter(r=>r.b||r.q).map(r=>{const k=pk(r),ep=vk(r);
-    const det=IN&&k&&k.includes(":")?` <span style="color:#666">(${HN[k.split(":")[0]]})</span>`:"";
+    const inf=[hasPo(r)&&"Preis Büro",k&&k.includes(":")&&HN[k.split(":")[0]],!k&&!hasPo(r)&&"freie Position",r.qu&&"gekauft bei "+esc(r.qu),r.bp&&"Beleg "+esc(r.bp)+" €"].filter(Boolean);
+    const det=IN&&inf.length?` <span style="color:#666">(${inf.join(" · ")})</span>`:"";
     return `<tr><td class="num">${esc(r.q)} ${esc(r.e)}</td><td>${esc(r.b)}${det}</td><td>${esc(r.a)}</td>${pr(ep,qn(r.q))}</tr>`}).join("");
   const yn=k=>YN[k]=="ja"?"Ja":YN[k]=="nein"?"Nein":"";
   const blank=n=>Array(Math.max(0,n)).fill(`<tr><td></td><td></td><td></td><td></td>${IN?"<td></td>":""}</tr>`).join("");const e5=IN?"<td></td>":"";
@@ -579,7 +586,7 @@ $("rsyes").onclick=async()=>{loading=true;try{localStorage.removeItem(KEY)}catch
 const DEV_HASH="0192b8fa2928a2d55e39f562a637819fadeb9b8b9eb661092bb0eeedef9dbb25";
 const sha=async t=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)))).map(b=>b.toString(16).padStart(2,"0")).join("");
 const devUnlocked=()=>{try{return sessionStorage.getItem("mb-dev")=="1"}catch(e){return false}};
-function devShow(){const u=devUnlocked();$("devlock").hidden=u;$("devtools").hidden=!u;$("devopen").textContent=u?"Entwicklertools (entsperrt)":"Entwicklertools";lockSend();syncVer()}
+function devShow(){const u=devUnlocked();drawM();$("devlock").hidden=u;$("devtools").hidden=!u;$("devopen").textContent=u?"Entwicklertools (entsperrt)":"Entwicklertools";lockSend();syncVer()}
 /* In der Claude-Vorschau (nicht auf netlify.app) ist der Umschalter immer da – nur zur Kontrolle */
 const PREVIEW=!/netlify\.app$|elektro-grapp/.test(location.hostname);
 const verOk=()=>PREVIEW||devUnlocked();
@@ -717,7 +724,8 @@ document.addEventListener("click",e=>{const t=e.target;if(!t)return;
 archPrune();
 
 /* ---------- Was ist neu (einmal pro Version) ---------- */
-const NEWS={id:"2026-11-11",t:"Neu im Montagebericht",l:[
+const NEWS={id:"2026-11-20",t:"Neu im Montagebericht",l:[
+  "Material, das nicht über das Büro bestellt wurde (z. B. selbst besorgt): bei „Gekauft bei“ eintragen, wo es herkommt, und wenn bekannt den „Preis laut Beleg“. Den Beleg bitte als Foto anhängen.",
   "Unterschrift: Das Feld erst über „Zum Unterschreiben entsperren“ freischalten. So entstehen beim Scrollen keine Striche.",
   "Arbeitszeit: Für jeden Monteur die Arbeitsart wählen (Elektro, Sanitär, WP oder Kältetechnik).",
   "„Zuletzt erstellt“ unten rechts: Gesendete Berichte bleiben 3 Wochen auf dem iPad und lassen sich wieder öffnen und korrigieren.",
