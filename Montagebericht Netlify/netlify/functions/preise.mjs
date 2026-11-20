@@ -4,7 +4,8 @@
 //       zaj = Zajadacz, wie = Wiedemann, bo = Bär & Ollenroth
 // Antwort: { kupfer: { wert, stand }, artikel: { "<Nr>": { h, uvp, basis, einheit, cu, cuBasis, zuschlag } } }
 //   h        Großhändler, der den Preis geliefert hat
-//   uvp      Listenpreis/UVP netto je <basis> <einheit>   (Netto-/Einkaufspreise werden NICHT geliefert)
+//   uvp      Listenpreis/UVP netto je <basis> <einheit>   (Netto-/Einkaufspreise werden NICHT geliefert);
+//            bei Wiedemann der Bruttopreis (listPrice), weil dort darauf kalkuliert wird
 //   cu       Kupfergewicht in kg je <basis> <einheit>, cuBasis = im Listenpreis enthaltene Kupferbasis (€/100 kg)
 //   zuschlag = cu × (Kupfernotiz − cuBasis) / 100   (€ je <basis> <einheit>)
 // Die Kupfernotiz steht nicht in der OMD-Schnittstelle, sondern im Zajadacz-Kundenportal unter „Mein Konto“.
@@ -64,7 +65,8 @@ async function getArtikel(H, token, pid) {
   if (r.status === 401) delete C.token[H.h];
   if (!r.ok) throw new Error(`${H.h}_artikel ${r.status}`);
   const b = await r.json();
-  const p = (b && b.prices) || {}, lp = p.rrp || p.listPrice;   // nur Listenpreis/UVP, nie netPrice
+  // nur Listenpreis/UVP, nie netPrice. Wiedemann: Kalkulation auf dem Bruttopreis (listPrice), sonst UVP zuerst
+  const p = (b && b.prices) || {}, lp = H.h === "wie" ? p.listPrice || p.rrp : p.rrp || p.listPrice;
   if (!lp || num(lp.value) == null) { C.art.set(key, { tag: today(), d: null }); return null; }
   const cu = (p.rawMaterial || []).find((m) => /^cu$/i.test(m.material || ""));
   const d = {
