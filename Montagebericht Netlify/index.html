@@ -754,12 +754,9 @@ document.addEventListener("click",e=>{const t=e.target;if(!t)return;
 archPrune();
 
 /* ---------- Was ist neu (einmal pro Version) ---------- */
-const NEWS={id:"2026-11-11",t:"Neu im Montagebericht",l:[
-  "Unterschrift: Das Feld erst über „Zum Unterschreiben entsperren“ freischalten. So entstehen beim Scrollen keine Striche.",
-  "Arbeitszeit: Für jeden Monteur die Arbeitsart wählen (Elektro, Sanitär, WP oder Kältetechnik).",
-  "„Zuletzt erstellt“ unten rechts: Gesendete Berichte bleiben 3 Wochen auf dem iPad und lassen sich wieder öffnen und korrigieren.",
-  "„Neuer Bericht“ heißt jetzt „Eingabe löschen“ und steht oben neben „PDF-Vorschau“."]};
-(()=>{let seen="";try{seen=localStorage.getItem("mb_news")||""}catch(e){}if(seen===NEWS.id)return;
+/* Zurzeit keine Hinweise: Fenster erscheint nur, wenn l Einträge hat (bei neuen Hinweisen id ändern). */
+const NEWS={id:"2026-11-23",t:"Neu im Montagebericht",l:[]};
+(()=>{let seen="";try{seen=localStorage.getItem("mb_news")||""}catch(e){}if(!NEWS.l.length||seen===NEWS.id)return;
   const o=document.createElement("div");o.id="newsBg";o.className="rsbg";
   o.innerHTML='<div class="rsbox" role="alertdialog" aria-modal="true"><h3>'+esc(NEWS.t)+'</h3><ul>'+NEWS.l.map(x=>"<li>"+esc(x)+"</li>").join("")+'</ul><button type="button" class="big dk" id="newsOk">Verstanden</button></div>';
   document.body.appendChild(o);$("newsOk").onclick=()=>{try{localStorage.setItem("mb_news",NEWS.id)}catch(e){}o.remove()}})();
